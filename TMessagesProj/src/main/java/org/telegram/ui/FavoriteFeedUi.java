@@ -5,17 +5,20 @@ import static org.telegram.messenger.LocaleController.formatPluralString;
 import static org.telegram.messenger.LocaleController.formatString;
 import static org.telegram.messenger.LocaleController.getString;
 
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.os.Bundle;
 import android.view.View;
 
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.FavoriteChannelsController;
+import org.telegram.messenger.HashtagSearchController;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.R;
@@ -24,7 +27,9 @@ import org.telegram.ui.ActionBar.ActionBarMenuItem;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Components.ChatAvatarContainer;
 import org.telegram.ui.Components.ItemOptions;
 
 import java.util.ArrayList;
@@ -127,6 +132,35 @@ public class FavoriteFeedUi {
         }
         BulletinFactory.of(fragment).createSimpleBulletin(R.raw.star_fill,
             AndroidUtilities.replaceTags(formatPluralString(remove ? "FavoriteFeedRemovedChannels" : "FavoriteFeedAddedChannels", selected.size()))).show();
+    }
+
+    /** The feed is a ChatActivity in search mode fed by FavoriteFeedSource, like public posts search. */
+    public static void openFeed(BaseFragment fragment) {
+        final Bundle args = new Bundle();
+        args.putInt("chatMode", ChatActivity.MODE_SEARCH);
+        args.putInt("searchType", ChatActivity.SEARCH_FAVORITE_FEED);
+        HashtagSearchController.getInstance(fragment.getCurrentAccount()).clearSearchResults(ChatActivity.SEARCH_FAVORITE_FEED);
+        fragment.presentFragment(new ChatActivity(args));
+    }
+
+    /** Same look as Saved Messages, with a star. */
+    public static AvatarDrawable createFeedAvatar(Context context) {
+        final AvatarDrawable avatar = new AvatarDrawable();
+        avatar.setAvatarType(AvatarDrawable.AVATAR_TYPE_SAVED);
+        final Drawable icon = context.getResources().getDrawable(R.drawable.msg_fave).mutate();
+        icon.setColorFilter(new PorterDuffColorFilter(0xffffffff, PorterDuff.Mode.SRC_IN));
+        avatar.setCustomIcon(icon);
+        return avatar;
+    }
+
+    public static void setupTitle(ChatAvatarContainer avatarContainer, int account) {
+        avatarContainer.setTitle(getString(R.string.FavoriteFeed));
+        avatarContainer.getAvatarImageView().setImageDrawable(createFeedAvatar(avatarContainer.getContext()));
+        avatarContainer.setSubtitle(getSubtitle(account));
+    }
+
+    public static CharSequence getSubtitle(int account) {
+        return formatPluralString("FavoriteFeedChannels", FavoriteChannelsController.getInstance(account).getCount());
     }
 
     /** Long press on the feed row in the chat list. */

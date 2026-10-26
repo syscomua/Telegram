@@ -3,9 +3,6 @@ package org.telegram.ui.Cells;
 import static org.telegram.messenger.LocaleController.getString;
 
 import android.content.Context;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
-import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 
 import org.telegram.messenger.FavoriteChannelsController;
@@ -16,6 +13,7 @@ import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.DialogsActivity;
+import org.telegram.ui.FavoriteFeedUi;
 
 /**
  * "Favorite feed" row in the chat list. Not backed by a real dialog: drawn as a custom dialog
@@ -25,15 +23,12 @@ public class FavoriteFeedCell extends DialogCell {
 
     private final int account;
     private final CustomDialog feedDialog = new CustomDialog();
-    private final AvatarDrawable feedAvatar = new AvatarDrawable();
+    private final AvatarDrawable feedAvatar;
 
     public FavoriteFeedCell(DialogsActivity fragment, Context context, int account) {
         super(fragment, context, false, false, account, null);
         this.account = account;
-        feedAvatar.setAvatarType(AvatarDrawable.AVATAR_TYPE_SAVED);
-        final Drawable icon = context.getResources().getDrawable(R.drawable.msg_fave).mutate();
-        icon.setColorFilter(new PorterDuffColorFilter(0xffffffff, PorterDuff.Mode.SRC_IN));
-        feedAvatar.setCustomIcon(icon);
+        feedAvatar = FavoriteFeedUi.createFeedAvatar(context);
         fillDialog();
         setDialog(feedDialog);
     }

@@ -7886,7 +7886,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             if (adapter.getItemViewType(position) == DialogsAdapter.VIEW_TYPE_FAVORITE_FEED) {
                 if (!actionBar.isActionModeShowed()) {
-                    presentFragment(new FavoriteFeedActivity());
+                    FavoriteFeedUi.openFeed(this);
                 }
                 return;
             }

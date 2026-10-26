@@ -61,6 +61,7 @@ import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Business.BusinessLinksController;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.Components.Forum.ForumUtilities;
+import org.telegram.ui.FavoriteFeedUi;
 import org.telegram.ui.ProfileActivity;
 import org.telegram.ui.Stories.StoriesUtilities;
 import org.telegram.ui.TopicsFragment;
@@ -1090,6 +1091,10 @@ public class ChatAvatarContainer extends FrameLayout implements FactorAnimator.T
         }
         if (parentFragment.getChatMode() == ChatActivity.MODE_EDIT_BUSINESS_LINK) {
             setSubtitle(BusinessLinksController.stripHttps(parentFragment.businessLink.link));
+            return;
+        }
+        if (parentFragment.isFavoriteFeed()) {
+            setSubtitle(FavoriteFeedUi.getSubtitle(parentFragment.getCurrentAccount()));
             return;
         }
         TLRPC.User user = parentFragment.getCurrentUser();

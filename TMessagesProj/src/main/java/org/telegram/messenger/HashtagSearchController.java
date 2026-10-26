@@ -121,6 +121,8 @@ public class HashtagSearchController {
             return channelPostsSearch;
         } else if (searchType == ChatActivity.SEARCH_CHANNEL_POSTS) {
             return localPostsSearch;
+        } else if (searchType == ChatActivity.SEARCH_FAVORITE_FEED) {
+            return FavoriteFeedSource.getInstance(currentAccount).getSearchResult();
         }
         throw new RuntimeException("Unknown search type");
     }
@@ -138,6 +140,10 @@ public class HashtagSearchController {
     }
 
     public void searchHashtag(String _query, int guid, int searchType, int loadIndex) {
+        if (searchType == ChatActivity.SEARCH_FAVORITE_FEED) {
+            FavoriteFeedSource.getInstance(currentAccount).load(guid, loadIndex);
+            return;
+        }
         SearchResult search = getSearchResult(searchType);
         if (search.lastHashtag == null && _query == null) {
             return;
@@ -302,6 +308,10 @@ public class HashtagSearchController {
     }
 
     public void clearSearchResults(int searchType) {
+        if (searchType == ChatActivity.SEARCH_FAVORITE_FEED) {
+            FavoriteFeedSource.getInstance(currentAccount).clear();
+            return;
+        }
         getSearchResult(searchType).clear();
     }
 

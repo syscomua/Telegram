@@ -145,15 +145,6 @@ public class FavoriteChannelsController extends BaseController {
         return getSettings().getBoolean("hidden_" + loadedForUserId, false);
     }
 
-    /** Posts shown in the feed mark their channel read. On by default. */
-    public boolean isMarkReadEnabled() {
-        return getSettings().getBoolean("mark_read", true);
-    }
-
-    public void setMarkReadEnabled(boolean enabled) {
-        getSettings().edit().putBoolean("mark_read", enabled).apply();
-    }
-
     public void setPlaceholderHidden(boolean hidden) {
         ensureLoaded();
         getSettings().edit().putBoolean("hidden_" + loadedForUserId, hidden).apply();

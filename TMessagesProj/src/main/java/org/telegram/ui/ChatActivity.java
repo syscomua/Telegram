@@ -695,6 +695,7 @@ public class ChatActivity extends BaseFragment implements
     public static final int SEARCH_MY_MESSAGES = 1;
     public static final int SEARCH_PUBLIC_POSTS = 2;
     public static final int SEARCH_CHANNEL_POSTS = 3;
+    public static final int SEARCH_FAVORITE_FEED = 4;
     private int searchType;
 
     public TL_account.TL_businessChatLink businessLink = null;
@@ -2901,7 +2902,7 @@ public class ChatActivity extends BaseFragment implements
             searchType = arguments.getInt("searchType", 0);
             searchingHashtag = arguments.getString("searchHashtag", null);
             searchingQuery = searchingHashtag;
-            if (searchType == 0 || searchingHashtag == null) {
+            if (searchType == 0 || searchingHashtag == null && searchType != SEARCH_FAVORITE_FEED) {
                 return false;
             }
         } else {
@@ -9013,7 +9014,7 @@ public class ChatActivity extends BaseFragment implements
             .setRadius(dp(18))
             .setPadding(dp(7)));
 
-        if (chatMode == MODE_SEARCH) {
+        if (chatMode == MODE_SEARCH && searchType != SEARCH_FAVORITE_FEED) {
             animatorSearchResultAsListVisibility.setValue(true, false);
             searchExpandList.setText(LocaleController.getString(R.string.SearchAsChat), false);
             updateSearchListEmptyView();
@@ -19699,8 +19700,16 @@ public class ChatActivity extends BaseFragment implements
         }
     }
 
+    public boolean isFavoriteFeed() {
+        return chatMode == MODE_SEARCH && searchType == SEARCH_FAVORITE_FEED;
+    }
+
     public void updateTitle(boolean animated) {
         if (avatarContainer == null) {
+            return;
+        }
+        if (isFavoriteFeed()) {
+            FavoriteFeedUi.setupTitle(avatarContainer, currentAccount);
             return;
         }
         if (chatMode == MODE_SUGGESTIONS && currentChat != null) {
