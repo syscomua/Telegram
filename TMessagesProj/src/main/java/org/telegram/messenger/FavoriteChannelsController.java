@@ -137,7 +137,12 @@ public class FavoriteChannelsController extends BaseController {
 
     /** The feed row is shown in the chat list while there is at least one channel, unless hidden. */
     public boolean isPlaceholderVisible() {
-        return getCount() > 0 && !getSettings().getBoolean("hidden_" + loadedForUserId, false);
+        return getCount() > 0 && !isPlaceholderHidden();
+    }
+
+    public boolean isPlaceholderHidden() {
+        ensureLoaded();
+        return getSettings().getBoolean("hidden_" + loadedForUserId, false);
     }
 
     /** Posts shown in the feed mark their channel read. On by default. */

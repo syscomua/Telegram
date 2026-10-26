@@ -69,6 +69,8 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
     private static final int FETCH_SIZE = 30;
     private static final int MAX_PARALLEL_FETCHES = 3;
 
+    private static final int MENU_SETTINGS = 1;
+
     private static final int ROW_HEADER = 0;
     private static final int ROW_MESSAGE = 1;
     private static final int ROW_LOADING = 2;
@@ -126,9 +128,21 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         return channels.contains(dialogId);
     }
 
+    /** Left or inaccessible channels stay in the list but are not part of the feed. */
+    private ArrayList<Long> getAvailableChannels() {
+        final ArrayList<Long> all = FavoriteChannelsController.getInstance(currentAccount).getAll();
+        final ArrayList<Long> result = new ArrayList<>();
+        for (int a = 0; a < all.size(); a++) {
+            if (FavoriteFeedSettingsActivity.isAvailable(getMessagesController().getChat(-all.get(a)))) {
+                result.add(all.get(a));
+            }
+        }
+        return result;
+    }
+
     @Override
     public boolean onFragmentCreate() {
-        channels = FavoriteChannelsController.getInstance(currentAccount).getAll();
+        channels = getAvailableChannels();
         getNotificationCenter().addObserver(this, NotificationCenter.messagesDidLoad);
         getNotificationCenter().addObserver(this, NotificationCenter.loadingMessagesFailed);
         getNotificationCenter().addObserver(this, NotificationCenter.didReceiveNewMessages);
@@ -161,9 +175,12 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
             public void onItemClick(int id) {
                 if (id == -1) {
                     finishFragment();
+                } else if (id == MENU_SETTINGS) {
+                    presentFragment(new FavoriteFeedSettingsActivity());
                 }
             }
         });
+        actionBar.createMenu().addItem(MENU_SETTINGS, R.drawable.msg_settings_old).setContentDescription(getString(R.string.FavoriteFeedSettings));
         updateSubtitle();
 
         contentView = new SizeNotifierFrameLayout(context) {
@@ -865,7 +882,7 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
                 replaceMessages(dialogId, (ArrayList<MessageObject>) args[1]);
             }
         } else if (id == NotificationCenter.favoriteChannelsUpdated) {
-            final ArrayList<Long> newChannels = FavoriteChannelsController.getInstance(currentAccount).getAll();
+            final ArrayList<Long> newChannels = getAvailableChannels();
             if (!newChannels.equals(channels)) {
                 reload(newChannels);
             }

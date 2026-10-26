@@ -11648,4 +11648,17 @@
     <string name="FavoriteFeedEmptyHint">No channels in the feed yet. Open a channel, tap ⋮ and choose \"Add to Favorite Feed\".</string>
     <string name="FavoriteFeedNewPosts_one">%1$d new post</string>
     <string name="FavoriteFeedNewPosts_other">%1$d new posts</string>
+    <string name="FavoriteFeedSettings">Feed settings</string>
+    <string name="FavoriteFeedOptions">Feed</string>
+    <string name="FavoriteFeedShowInList">Show in chat list</string>
+    <string name="FavoriteFeedMarkRead">Mark posts as read when viewed</string>
+    <string name="FavoriteFeedChannelsHeader">Channels</string>
+    <string name="FavoriteFeedChannelsInfo">Tap ⋮ next to a channel to remove it from the feed. Channels you left or cannot access stay in the list but are not shown in the feed.</string>
+    <string name="FavoriteFeedUnavailable">Not available</string>
+    <string name="FavoriteFeedExport">Export list</string>
+    <string name="FavoriteFeedImport">Import list</string>
+    <string name="FavoriteFeedBackupInfo">The list is stored only on this device. Export it to a file to keep it after reinstalling the app.</string>
+    <string name="FavoriteFeedImportInvalid">This is not a Favorite Feed list file</string>
+    <string name="FavoriteFeedImported_one">**%1$d** channel imported</string>
+    <string name="FavoriteFeedImported_other">**%1$d** channels imported</string>
 </resources>

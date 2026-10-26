@@ -302,4 +302,19 @@
     <string name="FavoriteFeedNewPosts_few">%1$d нові дописи</string>
     <string name="FavoriteFeedNewPosts_many">%1$d нових дописів</string>
     <string name="FavoriteFeedNewPosts_other">%1$d нового допису</string>
+    <string name="FavoriteFeedSettings">Налаштування стрічки</string>
+    <string name="FavoriteFeedOptions">Стрічка</string>
+    <string name="FavoriteFeedShowInList">Показувати у списку чатів</string>
+    <string name="FavoriteFeedMarkRead">Позначати прочитаним під час перегляду</string>
+    <string name="FavoriteFeedChannelsHeader">Канали</string>
+    <string name="FavoriteFeedChannelsInfo">Натисніть ⋮ біля каналу, щоб прибрати його зі стрічки. Канали, з яких ви вийшли або до яких немає доступу, залишаються у списку, але в стрічці не показуються.</string>
+    <string name="FavoriteFeedUnavailable">Недоступний</string>
+    <string name="FavoriteFeedExport">Експортувати список</string>
+    <string name="FavoriteFeedImport">Імпортувати список</string>
+    <string name="FavoriteFeedBackupInfo">Список зберігається лише на цьому пристрої. Експортуйте його у файл, щоб не втратити після перевстановлення застосунку.</string>
+    <string name="FavoriteFeedImportInvalid">Це не файл списку обраної стрічки</string>
+    <string name="FavoriteFeedImported_one">Імпортовано **%1$d** канал</string>
+    <string name="FavoriteFeedImported_few">Імпортовано **%1$d** канали</string>
+    <string name="FavoriteFeedImported_many">Імпортовано **%1$d** каналів</string>
+    <string name="FavoriteFeedImported_other">Імпортовано **%1$d** каналу</string>
 </resources>

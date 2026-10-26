@@ -133,6 +133,7 @@ public class FavoriteFeedUi {
     public static boolean showPlaceholderMenu(BaseFragment fragment, View view) {
         final int account = fragment.getCurrentAccount();
         ItemOptions.makeOptions(fragment, view)
+            .add(R.drawable.msg_settings_old, getString(R.string.FavoriteFeedSettings), () -> fragment.presentFragment(new FavoriteFeedSettingsActivity()))
             .add(R.drawable.msg_cancel, getString(R.string.FavoriteFeedHide), () -> {
                 FavoriteChannelsController.getInstance(account).setPlaceholderHidden(true);
                 BulletinFactory.of(fragment).createSimpleBulletin(R.raw.chats_hide, getString(R.string.FavoriteFeedHidden), getString(R.string.Undo),
