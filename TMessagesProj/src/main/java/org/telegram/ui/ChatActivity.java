@@ -1665,6 +1665,8 @@ public class ChatActivity extends BaseFragment implements
     private final static int tag_message = 28;
     private final static int boost_group = 29;
     private final static int favorite_feed = 75;
+    private final static int favorite_feed_settings = 76;
+    private final static int favorite_feed_calendar = 77;
 
     private final static int bot_help = 30;
     private final static int bot_settings = 31;
@@ -3947,6 +3949,10 @@ public class ChatActivity extends BaseFragment implements
                     }
                 } else if (id == mute) {
                     toggleMute(false);
+                } else if (id == favorite_feed_settings) {
+                    presentFragment(new FavoriteFeedSettingsActivity());
+                } else if (id == favorite_feed_calendar) {
+                    showDialog(AlertsCreator.createCalendarPickerDialog(getParentActivity(), 1375315200000L, ChatActivity.this::jumpToDate, themeDelegate).create());
                 } else if (id == favorite_feed) {
                     FavoriteFeedUi.toggle(ChatActivity.this, dialog_id);
                     FavoriteFeedUi.updateItem(favoriteFeedItem, currentAccount, dialog_id);
@@ -4292,6 +4298,11 @@ public class ChatActivity extends BaseFragment implements
         });
 
         ActionBarMenu menu = actionBar.createMenu();
+
+        if (isFavoriteFeed()) {
+            menu.addItem(favorite_feed_calendar, R.drawable.msg_calendar2).setContentDescription(getString(R.string.JumpToDate));
+            menu.addItem(favorite_feed_settings, R.drawable.msg_settings_old).setContentDescription(getString(R.string.FavoriteFeedSettings));
+        }
 
         if (chatMode == MODE_QUICK_REPLIES && !QuickRepliesController.isSpecial(quickReplyShortcut)) {
             menu.addItem(edit_quick_reply, R.drawable.group_edit).setContentDescription(LocaleController.getString(R.string.Edit));
@@ -38073,6 +38084,15 @@ public class ChatActivity extends BaseFragment implements
                     }
                     if (!pinnedTopByGroup && message.messageOwner != null && message.messageOwner.paid_message_stars > 0) {
                         pinnedTop = false;
+                    }
+                    if (isFavoriteFeed()) {
+                        // channel posts have no sender: posts of different channels must not merge
+                        if (!pinnedTopByGroup && prevType == holder.getItemViewType() && messages.get(prevPosition - messagesStartRow).getDialogId() != message.getDialogId()) {
+                            pinnedTop = false;
+                        }
+                        if (!pinnedBottomByGroup && nextType == holder.getItemViewType() && messages.get(nextPosition - messagesStartRow).getDialogId() != message.getDialogId()) {
+                            pinnedBottom = false;
+                        }
                     }
 
                     message.updateTranslation(false);

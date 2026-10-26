@@ -275,6 +275,8 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                 continue;
             }
             final MessageObject object = new MessageObject(currentAccount, message, true, true);
+            // channel avatar next to each post, as Saved Messages shows the source
+            object.forceAvatar = true;
             message.realId = message.id;
             message.id = nextId--;
             objects.add(object);
