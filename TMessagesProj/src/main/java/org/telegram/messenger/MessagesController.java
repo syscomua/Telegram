@@ -10591,7 +10591,8 @@ public class MessagesController extends BaseController implements NotificationCe
                     TLRPC.TL_messages_getMessagesViews req = new TLRPC.TL_messages_getMessagesViews();
                     req.peer = getInputPeer(key);
                     req.id = channelViewsToSend.valueAt(a);
-                    req.increment = a == 0;
+                    // the favorite feed shows several channels at once
+                    req.increment = a == 0 || FavoriteChannelsController.getInstance(currentAccount).isFavorite(key);
                     getConnectionsManager().sendRequest(req, (response, error) -> {
                         if (response != null) {
                             TLRPC.TL_messages_messageViews res = (TLRPC.TL_messages_messageViews) response;
@@ -14335,7 +14336,8 @@ public class MessagesController extends BaseController implements NotificationCe
         if (messageObject == null) return;
         Utilities.stageQueue.postRunnable(() -> {
             long peer = messageObject.getDialogId();
-            int id = messageObject.getId();
+            // search results carry generated ids
+            int id = messageObject.getRealId();
             ArrayList<Integer> ids = channelViewsToSend.get(peer);
             if (ids == null) {
                 ids = new ArrayList<>();

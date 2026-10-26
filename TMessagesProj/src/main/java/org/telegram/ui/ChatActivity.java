@@ -1893,6 +1893,11 @@ public class ChatActivity extends BaseFragment implements
                 if (isInsideContainer) {
                     return;
                 }
+                if (isFavoriteFeed()) {
+                    // no single dialog for the media calendar: the date picker of chat search
+                    showDialog(AlertsCreator.createCalendarPickerDialog(getParentActivity(), 1375315200000L, ChatActivity.this::jumpToDate, themeDelegate).create());
+                    return;
+                }
                 Bundle bundle = new Bundle();
                 int date = ((ChatActionCell) view).getMessageObject().messageOwner.date;
                 bundle.putLong("dialog_id", dialog_id);
@@ -12539,6 +12544,15 @@ public class ChatActivity extends BaseFragment implements
                     break;
                 }
             }
+        } else if (isFavoriteFeed()) {
+            if (firstMessage.messageOwner.date < date) {
+                // later than everything: the newest post
+                scrollToMessageId(firstMessage.getId(), 0, false, 0, true, 0);
+            } else {
+                // older than what is loaded: page down the feed until the date is in
+                feedJumpDate = date;
+                continueFeedJump();
+            }
         } else if (!DialogObject.isEncryptedDialog(dialog_id)) {
             int scrollDirection = RecyclerAnimationScrollHelper.SCROLL_DIRECTION_UNSET;
             int end = chatLayoutManager.findLastVisibleItemPosition();
@@ -19704,6 +19718,23 @@ public class ChatActivity extends BaseFragment implements
         return chatMode == MODE_SEARCH && searchType == SEARCH_FAVORITE_FEED;
     }
 
+    private int feedJumpDate;
+
+    private void continueFeedJump() {
+        if (feedJumpDate == 0 || messages.isEmpty()) {
+            return;
+        }
+        if (messages.get(messages.size() - 1).messageOwner.date <= feedJumpDate || endReached[0]) {
+            final int date = feedJumpDate;
+            feedJumpDate = 0;
+            jumpToDate(date);
+        } else if (!loading) {
+            loading = true;
+            waitingForLoad.add(lastLoadIndex);
+            HashtagSearchController.getInstance(currentAccount).searchHashtag(searchingHashtag, classGuid, searchType, lastLoadIndex++);
+        }
+    }
+
     public void updateTitle(boolean animated) {
         if (avatarContainer == null) {
             return;
@@ -24781,6 +24812,9 @@ public class ChatActivity extends BaseFragment implements
             if (hashtagSearchEmptyView != null) {
                 hashtagSearchEmptyView.showProgress(false);
             }
+            if (feedJumpDate != 0) {
+                AndroidUtilities.runOnUIThread(this::continueFeedJump);
+            }
         } else if (id == NotificationCenter.factCheckLoaded) {
             updateVisibleRows(msg -> msg != null && msg.getFactCheck() != null);
         } else if (id == NotificationCenter.availableEffectsUpdate) {
@@ -28261,7 +28295,7 @@ public class ChatActivity extends BaseFragment implements
             } else {
                 topViewWasVisible = 2;
             }
-        } else if (chatMode == MODE_SEARCH) {
+        } else if (chatMode == MODE_SEARCH && !isFavoriteFeed()) {
             createSearchContainer();
             if (searchContainer == null) {
                 return;
@@ -28305,7 +28339,7 @@ public class ChatActivity extends BaseFragment implements
                     muteItemGap.setVisibility(View.VISIBLE);
                 }
             }
-            if (isInsideContainer || forceNoBottom) {
+            if (isInsideContainer || forceNoBottom || isFavoriteFeed()) {
                 bottomChannelButtonsLayout.setVisibility(View.GONE);
                 chatActivityEnterView.setVisibility(View.GONE);
             } else if (isReport()) {
