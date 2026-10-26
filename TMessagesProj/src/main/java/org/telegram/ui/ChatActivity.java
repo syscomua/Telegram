@@ -26448,7 +26448,8 @@ public class ChatActivity extends BaseFragment implements
                     diff = 0;
                 }
                 if (!isAd) {
-                    if (lastVisible == 0 && diff <= AndroidUtilities.dp(5) && !hasDraftsReplaces || hasFromMe) {
+                    // the feed never jumps to a new post: the counter on the down button shows it
+                    if (!isFavoriteFeed() && (lastVisible == 0 && diff <= AndroidUtilities.dp(5) && !hasDraftsReplaces || hasFromMe)) {
                         newUnreadMessageCount = 0;
                         if (!firstLoading && chatMode != MODE_SCHEDULED) {
                             if (paused) {
@@ -26459,6 +26460,19 @@ public class ChatActivity extends BaseFragment implements
                             }
                         }
                     } else {
+                        if (isFavoriteFeed() && lastVisible == 0 && child != null) {
+                            // keep what is on screen, as for sponsored messages below
+                            MessageObject keepMessage = null;
+                            if (child instanceof ChatMessageCell) {
+                                keepMessage = ((ChatMessageCell) child).getMessageObject();
+                            } else if (child instanceof ChatActionCell) {
+                                keepMessage = ((ChatActionCell) child).getMessageObject();
+                            }
+                            final int keepIndex = messages.indexOf(keepMessage);
+                            if (keepIndex >= 0) {
+                                chatLayoutManager.scrollToPositionWithOffset(chatAdapter.messagesStartRow + keepIndex, getScrollingOffsetForView(child));
+                            }
+                        }
                         if (newUnreadMessageCount != 0 && sideControlsButtonsLayout != null) {
                             if (prevSetUnreadCount != newUnreadMessageCount) {
                                 prevSetUnreadCount = newUnreadMessageCount;
