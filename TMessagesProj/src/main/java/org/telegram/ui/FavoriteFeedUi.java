@@ -25,6 +25,7 @@ import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Components.BulletinFactory;
+import org.telegram.ui.Components.ItemOptions;
 
 import java.util.ArrayList;
 
@@ -126,6 +127,19 @@ public class FavoriteFeedUi {
         }
         BulletinFactory.of(fragment).createSimpleBulletin(R.raw.star_fill,
             AndroidUtilities.replaceTags(formatPluralString(remove ? "FavoriteFeedRemovedChannels" : "FavoriteFeedAddedChannels", selected.size()))).show();
+    }
+
+    /** Long press on the feed row in the chat list. */
+    public static boolean showPlaceholderMenu(BaseFragment fragment, View view) {
+        final int account = fragment.getCurrentAccount();
+        ItemOptions.makeOptions(fragment, view)
+            .add(R.drawable.msg_cancel, getString(R.string.FavoriteFeedHide), () -> {
+                FavoriteChannelsController.getInstance(account).setPlaceholderHidden(true);
+                BulletinFactory.of(fragment).createSimpleBulletin(R.raw.chats_hide, getString(R.string.FavoriteFeedHidden), getString(R.string.Undo),
+                    () -> FavoriteChannelsController.getInstance(account).setPlaceholderHidden(false)).show();
+            })
+            .show();
+        return true;
     }
 
     private static Drawable badgeBg, badgeFg;

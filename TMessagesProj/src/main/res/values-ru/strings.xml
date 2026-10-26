@@ -276,4 +276,12 @@
     <string name="FavoriteFeedRemovedChannels_few">**%1$d** канала убрано из избранной ленты</string>
     <string name="FavoriteFeedRemovedChannels_many">**%1$d** каналов убрано из избранной ленты</string>
     <string name="FavoriteFeedRemovedChannels_other">**%1$d** канала убрано из избранной ленты</string>
+    <string name="FavoriteFeed">Избранная лента</string>
+    <string name="FavoriteFeedNoPosts">Пока нет постов</string>
+    <string name="FavoriteFeedHide">Скрыть</string>
+    <string name="FavoriteFeedHidden">Избранная лента скрыта. Она вернётся, когда вы добавите канал.</string>
+    <string name="FavoriteFeedChannels_one">%1$d канал</string>
+    <string name="FavoriteFeedChannels_few">%1$d канала</string>
+    <string name="FavoriteFeedChannels_many">%1$d каналов</string>
+    <string name="FavoriteFeedChannels_other">%1$d канала</string>
 </resources>

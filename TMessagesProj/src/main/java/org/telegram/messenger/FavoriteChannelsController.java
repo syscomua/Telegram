@@ -1,5 +1,8 @@
 package org.telegram.messenger;
 
+import android.app.Activity;
+import android.content.SharedPreferences;
+
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.TLRPC;
 
@@ -65,6 +68,8 @@ public class FavoriteChannelsController extends BaseController {
             return;
         }
         channels.put(did, ConnectionsManager.getInstance(currentAccount).getCurrentTime());
+        // adding a channel brings a hidden feed row back
+        getSettings().edit().remove("hidden_" + loadedForUserId).apply();
         onChanged();
     }
 
@@ -94,6 +99,51 @@ public class FavoriteChannelsController extends BaseController {
     public int getCount() {
         ensureLoaded();
         return channels.size();
+    }
+
+    /** Sum of unread counters of the favorite channels, from the loaded chat list. */
+    public int getUnreadCount() {
+        ensureLoaded();
+        int count = 0;
+        for (long did : channels.keySet()) {
+            final TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(did);
+            if (dialog != null) {
+                count += dialog.unread_count;
+            }
+        }
+        return count;
+    }
+
+    /** Newest top message among the favorite channels, from the loaded chat list. */
+    public MessageObject getLastMessage() {
+        ensureLoaded();
+        MessageObject last = null;
+        for (long did : channels.keySet()) {
+            final ArrayList<MessageObject> messages = getMessagesController().dialogMessage.get(did);
+            if (messages == null || messages.isEmpty()) {
+                continue;
+            }
+            final MessageObject message = messages.get(0);
+            if (last == null || message.messageOwner.date > last.messageOwner.date) {
+                last = message;
+            }
+        }
+        return last;
+    }
+
+    private SharedPreferences getSettings() {
+        return ApplicationLoader.applicationContext.getSharedPreferences("favorite_feed_settings", Activity.MODE_PRIVATE);
+    }
+
+    /** The feed row is shown in the chat list while there is at least one channel, unless hidden. */
+    public boolean isPlaceholderVisible() {
+        return getCount() > 0 && !getSettings().getBoolean("hidden_" + loadedForUserId, false);
+    }
+
+    public void setPlaceholderHidden(boolean hidden) {
+        ensureLoaded();
+        getSettings().edit().putBoolean("hidden_" + loadedForUserId, hidden).apply();
+        getNotificationCenter().postNotificationName(NotificationCenter.favoriteChannelsUpdated);
     }
 
     private void onChanged() {
