@@ -304,4 +304,5 @@
     <string name="FavoriteFeedImported_few">Импортировано **%1$d** канала</string>
     <string name="FavoriteFeedImported_many">Импортировано **%1$d** каналов</string>
     <string name="FavoriteFeedImported_other">Импортировано **%1$d** канала</string>
+    <string name="FavoriteFeedToNewest">↑ К новым постам</string>
 </resources>

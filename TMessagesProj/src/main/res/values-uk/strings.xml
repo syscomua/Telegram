@@ -317,4 +317,5 @@
     <string name="FavoriteFeedImported_few">Імпортовано **%1$d** канали</string>
     <string name="FavoriteFeedImported_many">Імпортовано **%1$d** каналів</string>
     <string name="FavoriteFeedImported_other">Імпортовано **%1$d** каналу</string>
+    <string name="FavoriteFeedToNewest">↑ До нових дописів</string>
 </resources>

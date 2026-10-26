@@ -11,7 +11,9 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.text.style.CharacterStyle;
 import android.text.style.URLSpan;
-import android.util.LongSparseArray;
+import androidx.collection.LongSparseArray;
+import android.util.SparseArray;
+import android.util.SparseIntArray;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -27,8 +29,10 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessageCustomParamsHelper;
 import org.telegram.messenger.MessageObject;
 import org.telegram.messenger.MessagesStorage;
@@ -43,11 +47,15 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ChatMessageCell;
+import org.telegram.ui.Components.AlertsCreator;
 import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.RecyclerListView;
+import org.telegram.ui.Components.ShareAlert;
 import org.telegram.ui.Components.SizeNotifierFrameLayout;
+import org.telegram.ui.Components.URLSpanNoUnderline;
+import org.telegram.ui.Components.URLSpanUserMention;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -70,6 +78,7 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
     private static final int MAX_PARALLEL_FETCHES = 3;
 
     private static final int MENU_SETTINGS = 1;
+    private static final int MENU_CALENDAR = 2;
 
     private static final int ROW_HEADER = 0;
     private static final int ROW_MESSAGE = 1;
@@ -108,7 +117,21 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
 
     private int newPostsCount;
     private final HashMap<Long, Integer> readUpTo = new HashMap<>();
-    private final Runnable markReadRunnable = this::markVisibleAsRead;
+    private final Runnable markReadRunnable = this::onVisiblePostsChanged;
+
+    /** Start of the day the feed was moved to, 0 when it shows the newest posts. */
+    private int jumpDate;
+    private int dateFetchesLeft;
+    private TextView floatingDateView;
+    private final Runnable hideFloatingDateRunnable = () -> {
+        if (floatingDateView != null) {
+            floatingDateView.animate().alpha(0f).setDuration(200).start();
+        }
+    };
+
+    private final HashMap<Long, ArrayList<Integer>> viewsToSend = new HashMap<>();
+    private final HashSet<String> viewsSent = new HashSet<>();
+    private final Runnable sendViewsRunnable = this::sendViews;
 
     private static class Row {
         final int type;
@@ -149,6 +172,7 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         getNotificationCenter().addObserver(this, NotificationCenter.messagesDeleted);
         getNotificationCenter().addObserver(this, NotificationCenter.replaceMessagesObjects);
         getNotificationCenter().addObserver(this, NotificationCenter.favoriteChannelsUpdated);
+        getNotificationCenter().addObserver(this, NotificationCenter.didUpdateMessagesViews);
         return super.onFragmentCreate();
     }
 
@@ -161,7 +185,11 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         getNotificationCenter().removeObserver(this, NotificationCenter.messagesDeleted);
         getNotificationCenter().removeObserver(this, NotificationCenter.replaceMessagesObjects);
         getNotificationCenter().removeObserver(this, NotificationCenter.favoriteChannelsUpdated);
+        getNotificationCenter().removeObserver(this, NotificationCenter.didUpdateMessagesViews);
         AndroidUtilities.cancelRunOnUIThread(markReadRunnable);
+        AndroidUtilities.cancelRunOnUIThread(hideFloatingDateRunnable);
+        AndroidUtilities.cancelRunOnUIThread(sendViewsRunnable);
+        sendViews();
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -177,9 +205,12 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
                     finishFragment();
                 } else if (id == MENU_SETTINGS) {
                     presentFragment(new FavoriteFeedSettingsActivity());
+                } else if (id == MENU_CALENDAR) {
+                    showCalendar();
                 }
             }
         });
+        actionBar.createMenu().addItem(MENU_CALENDAR, R.drawable.msg_calendar2).setContentDescription(getString(R.string.JumpToDate));
         actionBar.createMenu().addItem(MENU_SETTINGS, R.drawable.msg_settings_old).setContentDescription(getString(R.string.FavoriteFeedSettings));
         updateSubtitle();
 
@@ -305,11 +336,24 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         });
         listView.setOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    AndroidUtilities.runOnUIThread(hideFloatingDateRunnable, 1500);
+                } else {
+                    AndroidUtilities.cancelRunOnUIThread(hideFloatingDateRunnable);
+                }
+            }
+
+            @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
                 checkLoadMore();
-                if (layoutManager.findFirstVisibleItemPosition() == 0) {
+                if (jumpDate == 0 && layoutManager.findFirstVisibleItemPosition() == 0) {
                     setNewPostsCount(0);
                 }
+                if (dy != 0) {
+                    updateFloatingDate();
+                }
+                updateToNewestButton();
                 scheduleMarkRead();
             }
         });
@@ -321,15 +365,25 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         emptyView.setVisibility(View.GONE);
         contentView.addView(emptyView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 32, 0, 32, 0));
 
+        // the chat's "scroll to bottom" button: here the newest posts are at the top
         newPostsView = createPill(context, 14);
-        newPostsView.setPadding(dp(14), dp(7), dp(14), dp(7));
+        newPostsView.setPadding(dp(14), dp(8), dp(14), dp(8));
         newPostsView.setTypeface(AndroidUtilities.bold());
         newPostsView.setVisibility(View.GONE);
-        newPostsView.setOnClickListener(v -> {
-            listView.scrollToPosition(0);
-            setNewPostsCount(0);
+        newPostsView.setOnClickListener(v -> returnToNewest());
+        contentView.addView(newPostsView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL, 0, 0, 0, 16));
+
+        // date of the post at the top while scrolling, as in chats; tap to jump to a date
+        floatingDateView = createPill(context, 13);
+        floatingDateView.setPadding(dp(10), dp(4), dp(10), dp(4));
+        floatingDateView.setTypeface(AndroidUtilities.bold());
+        floatingDateView.setAlpha(0f);
+        floatingDateView.setOnClickListener(v -> {
+            if (floatingDateView.getAlpha() > 0.5f) {
+                showCalendar();
+            }
         });
-        contentView.addView(newPostsView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 10, 0, 0));
+        contentView.addView(floatingDateView, LayoutHelper.createFrame(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 6, 0, 0));
 
         fragmentView = contentView;
         loadMore();
@@ -354,15 +408,93 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
 
     private void setNewPostsCount(int count) {
         newPostsCount = count;
-        if (newPostsView == null) {
+        updateToNewestButton();
+    }
+
+    /** Shown with new posts above, after a jump to a date, or when scrolled far down. */
+    private void updateToNewestButton() {
+        if (newPostsView == null || layoutManager == null) {
             return;
         }
-        if (count > 0) {
-            newPostsView.setText(formatPluralString("FavoriteFeedNewPosts", count));
+        final boolean farDown = layoutManager.findFirstVisibleItemPosition() > 6;
+        if (newPostsCount > 0) {
+            newPostsView.setText(formatPluralString("FavoriteFeedNewPosts", newPostsCount));
+            newPostsView.setVisibility(View.VISIBLE);
+        } else if (jumpDate != 0 || farDown) {
+            newPostsView.setText(getString(R.string.FavoriteFeedToNewest));
             newPostsView.setVisibility(View.VISIBLE);
         } else {
             newPostsView.setVisibility(View.GONE);
         }
+    }
+
+    private void returnToNewest() {
+        setNewPostsCount(0);
+        if (jumpDate != 0) {
+            jumpDate = 0;
+            reload(channels);
+        } else {
+            listView.scrollToPosition(0);
+        }
+        updateToNewestButton();
+    }
+
+    private void updateFloatingDate() {
+        if (floatingDateView == null) {
+            return;
+        }
+        MessageObject top = null;
+        for (int a = 0; a < listView.getChildCount() && top == null; a++) {
+            final View child = listView.getChildAt(a);
+            if (child.getBottom() <= 0) {
+                continue;
+            }
+            final int position = listView.getChildAdapterPosition(child);
+            if (position >= 0 && position < rows.size()) {
+                top = rows.get(position).message;
+            }
+        }
+        if (top == null) {
+            return;
+        }
+        floatingDateView.setText(LocaleController.formatDateChat(top.messageOwner.date));
+        if (floatingDateView.getAlpha() < 1f) {
+            floatingDateView.animate().cancel();
+            floatingDateView.animate().alpha(1f).setDuration(150).start();
+        }
+    }
+
+    private void showCalendar() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        showDialog(AlertsCreator.createCalendarPickerDialog(getParentActivity(), 1375315200000L, this::jumpToDate, null).create());
+    }
+
+    /**
+     * Shows the feed from the end of the chosen day downwards. History around that date is
+     * requested from the server first, then the window is read from the database as usual.
+     */
+    private void jumpToDate(int dayStart) {
+        final int dayEnd = dayStart + 24 * 60 * 60;
+        if (dayEnd >= getConnectionsManager().getCurrentTime()) {
+            returnToNewest();
+            return;
+        }
+        resetState();
+        jumpDate = dayStart;
+        cursorDate = dayEnd;
+        cursorMid = 0;
+        dateFetchesLeft = channels.size();
+        for (int a = 0; a < channels.size(); a++) {
+            enqueueFetch(channels.get(a), 0, dayEnd);
+        }
+        if (dateFetchesLeft == 0) {
+            loadMore();
+        }
+        updateRows();
+        updateToNewestButton();
+        listView.scrollToPosition(0);
     }
 
     private void openChannel(long dialogId, int messageId) {
@@ -533,7 +665,7 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
     /** Fresh history of every favorite channel. */
     private void refreshFromServer() {
         for (int a = 0; a < channels.size(); a++) {
-            enqueueFetch(channels.get(a), 0);
+            enqueueFetch(channels.get(a), 0, 0);
         }
         updateRows();
     }
@@ -553,19 +685,20 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
             }
             final int[] oldest = oldestLocal.get(dialogId);
             if (oldest == null) {
-                enqueueFetch(dialogId, 0);
+                enqueueFetch(dialogId, 0, jumpDate != 0 ? cursorDate : 0);
             } else if (dbEndReached || isAboveCursor(oldest[0], oldest[1])) {
-                enqueueFetch(dialogId, oldest[1]);
+                enqueueFetch(dialogId, oldest[1], 0);
             }
         }
     }
 
-    private void enqueueFetch(long dialogId, int maxId) {
+    /** fetch = {dialogId, maxId, offsetDate}: older than maxId, or around offsetDate, or the newest. */
+    private void enqueueFetch(long dialogId, int maxId, int offsetDate) {
         if (fetching.contains(dialogId)) {
             return;
         }
         fetching.add(dialogId);
-        fetchQueue.add(new long[]{dialogId, maxId});
+        fetchQueue.add(new long[]{dialogId, maxId, offsetDate});
         startFetches();
     }
 
@@ -575,13 +708,22 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
             activeFetches++;
             final int loadIndex = lastLoadIndex++;
             fetchesByLoadIndex.put(loadIndex, fetch);
-            getMessagesController().loadMessages(fetch[0], 0, false, FETCH_SIZE, (int) fetch[1], 0, false, 0, classGuid, 0, 0, 0, 0, 0, loadIndex, false);
+            if (fetch[2] != 0) {
+                // load_type 4: around the date, as ChatActivity.jumpToDate does
+                getMessagesController().loadMessages(fetch[0], 0, false, FETCH_SIZE, 0, (int) fetch[2], false, 0, classGuid, 4, 0, 0, 0, 0, loadIndex, false);
+            } else {
+                getMessagesController().loadMessages(fetch[0], 0, false, FETCH_SIZE, (int) fetch[1], 0, false, 0, classGuid, 0, 0, 0, 0, 0, loadIndex, false);
+            }
         }
     }
 
     private void onFetchFinished(long[] fetch) {
         activeFetches--;
         fetching.remove(fetch[0]);
+        if (fetch[2] != 0 && dateFetchesLeft > 0 && --dateFetchesLeft == 0) {
+            // everything around the date is in the database now
+            loadMore();
+        }
         startFetches();
         updateRows();
     }
@@ -592,6 +734,10 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
             return;
         }
         final long dialogId = fetch[0];
+        if (fetch[2] != 0) {
+            onFetchFinished(fetch);
+            return;
+        }
         if (fetch[1] != 0 && objects.size() < FETCH_SIZE) {
             exhausted.add(dialogId);
         }
@@ -790,11 +936,134 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         AndroidUtilities.runOnUIThread(markReadRunnable, 500);
     }
 
-    /** Shown posts mark their channel read up to them, as scrolling a channel does. */
-    private void markVisibleAsRead() {
-        if (listView == null || isPaused || !FavoriteChannelsController.getInstance(currentAccount).isMarkReadEnabled()) {
+    private void onVisiblePostsChanged() {
+        if (listView == null || isPaused) {
             return;
         }
+        queueVisibleViews();
+        if (FavoriteChannelsController.getInstance(currentAccount).isMarkReadEnabled()) {
+            markVisibleAsRead();
+        }
+    }
+
+    /**
+     * Counts views of shown posts. The cell queues them itself, but MessagesController
+     * sends increment only for the first channel of each batch: fine for a single chat,
+     * not for a feed of several channels. So the feed sends its own requests.
+     */
+    private void queueVisibleViews() {
+        boolean added = false;
+        for (int a = 0; a < listView.getChildCount(); a++) {
+            final View child = listView.getChildAt(a);
+            if (!(child instanceof ChatMessageCell) || child.getBottom() <= 0 || child.getTop() >= listView.getHeight()) {
+                continue;
+            }
+            final MessageObject message = ((ChatMessageCell) child).getMessageObject();
+            if (message == null || message.getId() <= 0 || (message.messageOwner.flags & TLRPC.MESSAGE_FLAG_HAS_VIEWS) == 0) {
+                continue;
+            }
+            if (viewsSent.add(key(message.getDialogId(), message.getId()))) {
+                ArrayList<Integer> ids = viewsToSend.get(message.getDialogId());
+                if (ids == null) {
+                    ids = new ArrayList<>();
+                    viewsToSend.put(message.getDialogId(), ids);
+                }
+                ids.add(message.getId());
+                added = true;
+            }
+        }
+        if (added) {
+            AndroidUtilities.cancelRunOnUIThread(sendViewsRunnable);
+            AndroidUtilities.runOnUIThread(sendViewsRunnable, 1000);
+        }
+    }
+
+    private void sendViews() {
+        for (HashMap.Entry<Long, ArrayList<Integer>> entry : viewsToSend.entrySet()) {
+            final long dialogId = entry.getKey();
+            final TLRPC.TL_messages_getMessagesViews req = new TLRPC.TL_messages_getMessagesViews();
+            req.peer = getMessagesController().getInputPeer(dialogId);
+            req.id = entry.getValue();
+            req.increment = true;
+            getConnectionsManager().sendRequest(req, (response, error) -> {
+                if (!(response instanceof TLRPC.TL_messages_messageViews)) {
+                    return;
+                }
+                // same processing as MessagesController's views queue
+                final TLRPC.TL_messages_messageViews res = (TLRPC.TL_messages_messageViews) response;
+                final LongSparseArray<SparseIntArray> channelViews = new LongSparseArray<>();
+                final LongSparseArray<SparseIntArray> channelForwards = new LongSparseArray<>();
+                final LongSparseArray<SparseArray<TLRPC.MessageReplies>> channelReplies = new LongSparseArray<>();
+                final SparseIntArray views = new SparseIntArray();
+                final SparseIntArray forwards = new SparseIntArray();
+                final SparseArray<TLRPC.MessageReplies> replies = new SparseArray<>();
+                for (int a = 0; a < req.id.size() && a < res.views.size(); a++) {
+                    final TLRPC.TL_messageViews messageViews = res.views.get(a);
+                    if ((messageViews.flags & 1) != 0) {
+                        views.put(req.id.get(a), messageViews.views);
+                    }
+                    if ((messageViews.flags & 2) != 0) {
+                        forwards.put(req.id.get(a), messageViews.forwards);
+                    }
+                    if ((messageViews.flags & 4) != 0) {
+                        replies.put(req.id.get(a), messageViews.replies);
+                    }
+                }
+                channelViews.put(dialogId, views);
+                channelForwards.put(dialogId, forwards);
+                channelReplies.put(dialogId, replies);
+                getMessagesStorage().putUsersAndChats(res.users, res.chats, true, true);
+                getMessagesStorage().putChannelViews(channelViews, channelForwards, channelReplies, false);
+                AndroidUtilities.runOnUIThread(() -> {
+                    getMessagesController().putUsers(res.users, false);
+                    getMessagesController().putChats(res.chats, false);
+                    getNotificationCenter().postNotificationName(NotificationCenter.didUpdateMessagesViews, channelViews, channelForwards, channelReplies, false);
+                });
+            });
+        }
+        viewsToSend.clear();
+    }
+
+    private void onViewsUpdated(LongSparseArray<SparseIntArray> channelViews, LongSparseArray<SparseIntArray> channelForwards, LongSparseArray<SparseArray<TLRPC.MessageReplies>> channelReplies) {
+        boolean updated = false;
+        for (int a = 0; a < messages.size(); a++) {
+            final MessageObject message = messages.get(a);
+            final long dialogId = message.getDialogId();
+            final SparseIntArray views = channelViews != null ? channelViews.get(dialogId) : null;
+            final SparseIntArray forwards = channelForwards != null ? channelForwards.get(dialogId) : null;
+            final SparseArray<TLRPC.MessageReplies> replies = channelReplies != null ? channelReplies.get(dialogId) : null;
+            final int newViews = views != null ? views.get(message.getId(), -1) : -1;
+            if (newViews > message.messageOwner.views) {
+                message.messageOwner.views = newViews;
+                message.messageOwner.flags |= TLRPC.MESSAGE_FLAG_HAS_VIEWS;
+                updated = true;
+            }
+            final int newForwards = forwards != null ? forwards.get(message.getId(), -1) : -1;
+            if (newForwards >= 0 && newForwards != message.messageOwner.forwards) {
+                message.messageOwner.forwards = newForwards;
+                updated = true;
+            }
+            final TLRPC.MessageReplies newReplies = replies != null ? replies.get(message.getId()) : null;
+            if (newReplies != null) {
+                message.messageOwner.replies = newReplies;
+                updated = true;
+            }
+        }
+        if (updated && listView != null) {
+            for (int a = 0; a < listView.getChildCount(); a++) {
+                final View child = listView.getChildAt(a);
+                if (child instanceof ChatMessageCell) {
+                    final int position = listView.getChildAdapterPosition(child);
+                    if (position >= 0) {
+                        adapter.notifyItemChanged(position);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Shown posts mark their channel read up to them, as scrolling a channel does. */
+    private void markVisibleAsRead() {
         final HashMap<Long, MessageObject> maxVisible = new HashMap<>();
         for (int a = 0; a < listView.getChildCount(); a++) {
             final View child = listView.getChildAt(a);
@@ -864,11 +1133,18 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
                 return;
             }
             final ArrayList<MessageObject> objects = (ArrayList<MessageObject>) args[1];
+            if (jumpDate != 0) {
+                // the window shows an older day: just count, the button brings the newest back
+                setNewPostsCount(newPostsCount + objects.size());
+                return;
+            }
             final boolean scrolledDown = layoutManager != null && layoutManager.findFirstVisibleItemPosition() > 0;
             final int added = addMessages(objects);
             if (scrolledDown && added > 0) {
                 setNewPostsCount(newPostsCount + added);
             }
+        } else if (id == NotificationCenter.didUpdateMessagesViews) {
+            onViewsUpdated((LongSparseArray<SparseIntArray>) args[0], (LongSparseArray<SparseIntArray>) args[1], (LongSparseArray<SparseArray<TLRPC.MessageReplies>>) args[2]);
         } else if (id == NotificationCenter.messagesDeleted) {
             final boolean scheduled = (Boolean) args[2];
             final long channelId = (Long) args[1];
@@ -891,6 +1167,20 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
 
     private void reload(ArrayList<Long> newChannels) {
         channels = newChannels;
+        resetState();
+        updateSubtitle();
+        if (emptyView != null) {
+            emptyView.setText(getString(channels.isEmpty() ? R.string.FavoriteFeedEmptyHint : R.string.FavoriteFeedNoPosts));
+        }
+        if (jumpDate != 0) {
+            jumpToDate(jumpDate);
+            return;
+        }
+        loadMore();
+        refreshFromServer();
+    }
+
+    private void resetState() {
         loadGeneration++;
         messages.clear();
         messageKeys.clear();
@@ -906,12 +1196,8 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
         dbEndReached = false;
         cursorDate = 0;
         cursorMid = 0;
-        updateSubtitle();
-        if (emptyView != null) {
-            emptyView.setText(getString(channels.isEmpty() ? R.string.FavoriteFeedEmptyHint : R.string.FavoriteFeedNoPosts));
-        }
-        loadMore();
-        refreshFromServer();
+        dateFetchesLeft = 0;
+        // requests still in flight are ignored: their load indexes are forgotten
     }
 
     private class ListAdapter extends RecyclerListView.SelectionAdapter {
@@ -964,9 +1250,12 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
 
                     @Override
                     public void didPressUrl(ChatMessageCell cell, CharacterStyle url, boolean longPress) {
-                        if (url instanceof URLSpan) {
-                            Browser.openUrl(getParentActivity(), ((URLSpan) url).getURL());
-                        }
+                        openUrl(url);
+                    }
+
+                    @Override
+                    public void didPressSideButton(ChatMessageCell cell) {
+                        sharePost(cell.getMessageObject());
                     }
 
                     @Override
@@ -1002,6 +1291,50 @@ public class FavoriteFeedActivity extends BaseFragment implements NotificationCe
                 cell.setHighlighted(false);
             }
         }
+    }
+
+    /** Mentions, hashtags and links, the way ChatActivity routes them. */
+    private void openUrl(CharacterStyle url) {
+        if (url instanceof URLSpanUserMention) {
+            final TLRPC.User user = getMessagesController().getUser(Utilities.parseLong(((URLSpanUserMention) url).getURL()));
+            if (user != null) {
+                getMessagesController().openChatOrProfileWith(user, null, this, 0, false);
+            }
+        } else if (url instanceof URLSpanNoUnderline) {
+            final String str = ((URLSpanNoUnderline) url).getURL();
+            if (str == null) {
+                return;
+            }
+            if (str.startsWith("@")) {
+                getMessagesController().openByUserName(str.substring(1), this, 0);
+            } else if (str.startsWith("#") || str.startsWith("$")) {
+                final DialogsActivity fragment = new DialogsActivity(null);
+                fragment.setSearchString(str);
+                presentFragment(fragment);
+            } else if (str.startsWith("http") || str.startsWith("tg:")) {
+                Browser.openUrl(getParentActivity(), str);
+            }
+        } else if (url instanceof URLSpan) {
+            Browser.openUrl(getParentActivity(), ((URLSpan) url).getURL());
+        }
+    }
+
+    /** The share arrow next to a post: forwards the post (the whole album) like in the channel. */
+    private void sharePost(MessageObject message) {
+        if (message == null || getParentActivity() == null) {
+            return;
+        }
+        final ArrayList<MessageObject> toShare = new ArrayList<>();
+        final MessageObject.GroupedMessages group = getValidGroup(message);
+        if (group != null) {
+            toShare.addAll(group.messages);
+        } else {
+            toShare.add(message);
+        }
+        final TLRPC.Chat chat = getMessagesController().getChat(-message.getDialogId());
+        final String username = chat != null ? ChatObject.getPublicUsername(chat) : null;
+        final String link = TextUtils.isEmpty(username) ? null : "https://t.me/" + username + "/" + message.getId();
+        showDialog(new ShareAlert(getParentActivity(), toShare, null, true, link, false, null));
     }
 
     private void openPost(ChatMessageCell cell) {

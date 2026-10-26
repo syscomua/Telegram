@@ -11661,4 +11661,5 @@
     <string name="FavoriteFeedImportInvalid">This is not a Favorite Feed list file</string>
     <string name="FavoriteFeedImported_one">**%1$d** channel imported</string>
     <string name="FavoriteFeedImported_other">**%1$d** channels imported</string>
+    <string name="FavoriteFeedToNewest">↑ To newest posts</string>
 </resources>
