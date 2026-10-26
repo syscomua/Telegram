@@ -297,4 +297,5 @@
     <string name="FavoriteFeedChannels_few">%1$d канали</string>
     <string name="FavoriteFeedChannels_many">%1$d каналів</string>
     <string name="FavoriteFeedChannels_other">%1$d каналу</string>
+    <string name="FavoriteFeedEmptyHint">У стрічці поки немає каналів. Відкрийте канал, натисніть ⋮ і виберіть «Додати до обраної стрічки».</string>
 </resources>

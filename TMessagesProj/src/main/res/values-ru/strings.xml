@@ -284,4 +284,5 @@
     <string name="FavoriteFeedChannels_few">%1$d канала</string>
     <string name="FavoriteFeedChannels_many">%1$d каналов</string>
     <string name="FavoriteFeedChannels_other">%1$d канала</string>
+    <string name="FavoriteFeedEmptyHint">В ленте пока нет каналов. Откройте канал, нажмите ⋮ и выберите «Добавить в избранную ленту».</string>
 </resources>

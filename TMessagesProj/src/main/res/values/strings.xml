@@ -11645,4 +11645,5 @@
     <string name="FavoriteFeedHidden">Favorite Feed hidden. It will come back when you add a channel.</string>
     <string name="FavoriteFeedChannels_one">%1$d channel</string>
     <string name="FavoriteFeedChannels_other">%1$d channels</string>
+    <string name="FavoriteFeedEmptyHint">No channels in the feed yet. Open a channel, tap ⋮ and choose \"Add to Favorite Feed\".</string>
 </resources>
