@@ -301,6 +301,7 @@
     <string name="FavoriteFeedSettings">Налаштування стрічки</string>
     <string name="FavoriteFeedOptions">Стрічка</string>
     <string name="FavoriteFeedShowInList">Показувати у списку чатів</string>
+    <string name="FavoriteFeedAutoScroll">Прокручувати до нових дописів</string>
     <string name="FavoriteFeedChannelsHeader">Канали</string>
     <string name="FavoriteFeedChannelsInfo">Натисніть ⋮ біля каналу, щоб прибрати його зі стрічки. Канали, з яких ви вийшли або до яких немає доступу, залишаються у списку, але в стрічці не показуються.</string>
     <string name="FavoriteFeedUnavailable">Недоступний</string>

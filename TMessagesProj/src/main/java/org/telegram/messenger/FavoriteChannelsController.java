@@ -151,6 +151,15 @@ public class FavoriteChannelsController extends BaseController {
         getNotificationCenter().postNotificationName(NotificationCenter.favoriteChannelsUpdated);
     }
 
+    /** Scroll an open feed to a new post when its bottom is on screen, as chats do. Off by default. */
+    public boolean isAutoScrollEnabled() {
+        return getSettings().getBoolean("auto_scroll", false);
+    }
+
+    public void setAutoScrollEnabled(boolean enabled) {
+        getSettings().edit().putBoolean("auto_scroll", enabled).apply();
+    }
+
     private void onChanged() {
         store.save(loadedForUserId, channels);
         getNotificationCenter().postNotificationName(NotificationCenter.favoriteChannelsUpdated);

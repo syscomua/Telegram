@@ -11649,6 +11649,7 @@
     <string name="FavoriteFeedSettings">Feed settings</string>
     <string name="FavoriteFeedOptions">Feed</string>
     <string name="FavoriteFeedShowInList">Show in chat list</string>
+    <string name="FavoriteFeedAutoScroll">Scroll to new posts</string>
     <string name="FavoriteFeedChannelsHeader">Channels</string>
     <string name="FavoriteFeedChannelsInfo">Tap ⋮ next to a channel to remove it from the feed. Channels you left or cannot access stay in the list but are not shown in the feed.</string>
     <string name="FavoriteFeedUnavailable">Not available</string>

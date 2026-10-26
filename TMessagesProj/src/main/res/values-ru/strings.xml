@@ -288,6 +288,7 @@
     <string name="FavoriteFeedSettings">Настройки ленты</string>
     <string name="FavoriteFeedOptions">Лента</string>
     <string name="FavoriteFeedShowInList">Показывать в списке чатов</string>
+    <string name="FavoriteFeedAutoScroll">Прокручивать к новым постам</string>
     <string name="FavoriteFeedChannelsHeader">Каналы</string>
     <string name="FavoriteFeedChannelsInfo">Нажмите ⋮ рядом с каналом, чтобы убрать его из ленты. Каналы, из которых вы вышли или к которым нет доступа, остаются в списке, но в ленте не показываются.</string>
     <string name="FavoriteFeedUnavailable">Недоступен</string>

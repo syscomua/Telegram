@@ -66,6 +66,7 @@ public class FavoriteFeedSettingsActivity extends BaseFragment implements Notifi
     private int rowCount;
     private int optionsHeaderRow;
     private int showRow;
+    private int autoScrollRow;
     private int optionsShadowRow;
     private int channelsHeaderRow;
     private int channelsStartRow;
@@ -97,6 +98,7 @@ public class FavoriteFeedSettingsActivity extends BaseFragment implements Notifi
         rowCount = 0;
         optionsHeaderRow = rowCount++;
         showRow = rowCount++;
+        autoScrollRow = rowCount++;
         optionsShadowRow = rowCount++;
         channelsHeaderRow = rowCount++;
         channelsStartRow = rowCount;
@@ -136,6 +138,10 @@ public class FavoriteFeedSettingsActivity extends BaseFragment implements Notifi
                 final boolean hidden = !getController().isPlaceholderHidden();
                 getController().setPlaceholderHidden(hidden);
                 ((TextCheckCell) view).setChecked(!hidden);
+            } else if (position == autoScrollRow) {
+                final boolean enabled = !getController().isAutoScrollEnabled();
+                getController().setAutoScrollEnabled(enabled);
+                ((TextCheckCell) view).setChecked(enabled);
             } else if (position >= channelsStartRow && position < channelsEndRow) {
                 final Bundle args = new Bundle();
                 args.putLong("chat_id", -channels.get(position - channelsStartRow));
@@ -262,7 +268,7 @@ public class FavoriteFeedSettingsActivity extends BaseFragment implements Notifi
         public int getItemViewType(int position) {
             if (position == optionsHeaderRow || position == channelsHeaderRow) {
                 return TYPE_HEADER;
-            } else if (position == showRow) {
+            } else if (position == showRow || position == autoScrollRow) {
                 return TYPE_CHECK;
             } else if (position >= channelsStartRow && position < channelsEndRow) {
                 return TYPE_CHANNEL;
@@ -323,7 +329,11 @@ public class FavoriteFeedSettingsActivity extends BaseFragment implements Notifi
                     ((HeaderCell) holder.itemView).setText(getString(position == optionsHeaderRow ? R.string.FavoriteFeedOptions : R.string.FavoriteFeedChannelsHeader));
                     break;
                 case TYPE_CHECK:
-                    ((TextCheckCell) holder.itemView).setTextAndCheck(getString(R.string.FavoriteFeedShowInList), !getController().isPlaceholderHidden(), false);
+                    if (position == showRow) {
+                        ((TextCheckCell) holder.itemView).setTextAndCheck(getString(R.string.FavoriteFeedShowInList), !getController().isPlaceholderHidden(), true);
+                    } else {
+                        ((TextCheckCell) holder.itemView).setTextAndCheck(getString(R.string.FavoriteFeedAutoScroll), getController().isAutoScrollEnabled(), false);
+                    }
                     break;
                 case TYPE_CHANNEL: {
                     final ManageChatUserCell cell = (ManageChatUserCell) holder.itemView;

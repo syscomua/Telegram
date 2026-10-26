@@ -26448,8 +26448,9 @@ public class ChatActivity extends BaseFragment implements
                     diff = 0;
                 }
                 if (!isAd) {
-                    // the feed never jumps to a new post: the counter on the down button shows it
-                    if (!isFavoriteFeed() && (lastVisible == 0 && diff <= AndroidUtilities.dp(5) && !hasDraftsReplaces || hasFromMe)) {
+                    // unless set in feed settings, the feed does not jump to a new post: the down button counts it
+                    final boolean feedKeepsPosition = isFavoriteFeed() && !FavoriteChannelsController.getInstance(currentAccount).isAutoScrollEnabled();
+                    if (!feedKeepsPosition && (lastVisible == 0 && diff <= AndroidUtilities.dp(5) && !hasDraftsReplaces || hasFromMe)) {
                         newUnreadMessageCount = 0;
                         if (!firstLoading && chatMode != MODE_SCHEDULED) {
                             if (paused) {
@@ -26460,7 +26461,7 @@ public class ChatActivity extends BaseFragment implements
                             }
                         }
                     } else {
-                        if (isFavoriteFeed() && lastVisible == 0 && child != null) {
+                        if (feedKeepsPosition && lastVisible == 0 && child != null) {
                             // keep what is on screen, as for sponsored messages below
                             MessageObject keepMessage = null;
                             if (child instanceof ChatMessageCell) {
