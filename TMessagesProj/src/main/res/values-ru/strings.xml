@@ -285,4 +285,8 @@
     <string name="FavoriteFeedChannels_many">%1$d каналов</string>
     <string name="FavoriteFeedChannels_other">%1$d канала</string>
     <string name="FavoriteFeedEmptyHint">В ленте пока нет каналов. Откройте канал, нажмите ⋮ и выберите «Добавить в избранную ленту».</string>
+    <string name="FavoriteFeedNewPosts_one">%1$d новый пост</string>
+    <string name="FavoriteFeedNewPosts_few">%1$d новых поста</string>
+    <string name="FavoriteFeedNewPosts_many">%1$d новых постов</string>
+    <string name="FavoriteFeedNewPosts_other">%1$d новых поста</string>
 </resources>

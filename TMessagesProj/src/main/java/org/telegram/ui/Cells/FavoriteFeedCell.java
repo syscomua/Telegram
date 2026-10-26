@@ -6,6 +6,7 @@ import android.content.Context;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 
 import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.MessageObject;
@@ -45,7 +46,9 @@ public class FavoriteFeedCell extends DialogCell {
         feedDialog.unread_count = controller.getUnreadCount();
         if (last != null) {
             final TLRPC.Chat chat = MessagesController.getInstance(account).getChat(-last.getDialogId());
-            final String text = last.messageText != null ? last.messageText.toString() : "";
+            // media posts: the caption, not the media type label
+            final CharSequence source = !TextUtils.isEmpty(last.caption) ? last.caption : last.messageText;
+            final String text = source != null ? source.toString().replace('\n', ' ') : "";
             feedDialog.message = (chat != null ? chat.title + ": " : "") + text;
             feedDialog.date = last.messageOwner.date;
         } else {

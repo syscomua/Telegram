@@ -1799,7 +1799,7 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
                     itemInternals.add(new ItemInternal(VIEW_TYPE_DIALOG, array.get(k)));
                 }
             }
-            if (dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT && folderId == 0 && (filter == null || filter.isDefault()) && parentFragment != null && !parentFragment.isOnlySelect() && FavoriteChannelsController.getInstance(currentAccount).isPlaceholderVisible()) {
+            if (dialogsCount > 0 && dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT && folderId == 0 && (filter == null || filter.isDefault()) && parentFragment != null && !parentFragment.isOnlySelect() && FavoriteChannelsController.getInstance(currentAccount).isPlaceholderVisible()) {
                 // under the archive row, above everything else
                 favoriteFeedRow = firstDialogRow + (!array.isEmpty() && array.get(0) instanceof TLRPC.TL_dialogFolder ? 1 : 0);
                 itemInternals.add(favoriteFeedRow, new ItemInternal(VIEW_TYPE_FAVORITE_FEED));

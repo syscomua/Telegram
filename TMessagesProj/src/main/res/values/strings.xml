@@ -11646,4 +11646,6 @@
     <string name="FavoriteFeedChannels_one">%1$d channel</string>
     <string name="FavoriteFeedChannels_other">%1$d channels</string>
     <string name="FavoriteFeedEmptyHint">No channels in the feed yet. Open a channel, tap ⋮ and choose \"Add to Favorite Feed\".</string>
+    <string name="FavoriteFeedNewPosts_one">%1$d new post</string>
+    <string name="FavoriteFeedNewPosts_other">%1$d new posts</string>
 </resources>
