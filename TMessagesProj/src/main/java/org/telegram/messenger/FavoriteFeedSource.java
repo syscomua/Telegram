@@ -297,8 +297,9 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         message.realId = message.id;
         message.id = feedId;
         final MessageObject object = new MessageObject(currentAccount, message, true, true);
-        // channel avatar next to each post, as Saved Messages shows the source
-        object.forceAvatar = true;
+        // channel avatar next to each post, as Saved Messages shows the source;
+        // not forceAvatar: it would draw one on every part of an album
+        object.isFavoriteFeedPost = true;
         return object;
     }
 

@@ -399,6 +399,8 @@ public class MessageObject {
     public boolean isRepostVideoPreview;
     public boolean business;
     public boolean forceAvatar;
+    /** Post shown in the favorite feed: channel avatar like a sender's, once per album */
+    public boolean isFavoriteFeedPost;
     public Drawable customAvatarDrawable;
     public boolean isSaved;
     public boolean isSavedFiltered;
@@ -9636,7 +9638,7 @@ public class MessageObject {
         if (isSaved) {
             return true;
         }
-        if (forceAvatar || customAvatarDrawable != null) {
+        if (forceAvatar || customAvatarDrawable != null || isFavoriteFeedPost) {
             return true;
         }
         if (searchType != 0) {
