@@ -263,4 +263,17 @@
     <string name="RemindTodayAt">\'Отправить сегодня в\' HH:mm</string>
     <string name="RemindDayAt">\'Отправить\' d MMM \'в\' HH:mm</string>
     <string name="RemindDayYearAt">\'Напомнить\' d MMM yyyy \'в\' HH:mm</string>
+    <!--favorite feed-->
+    <string name="FavoriteFeedAdd">Добавить в избранную ленту</string>
+    <string name="FavoriteFeedRemove">Убрать из избранной ленты</string>
+    <string name="FavoriteFeedAdded">**%1$s** добавлен в избранную ленту</string>
+    <string name="FavoriteFeedRemoved">**%1$s** убран из избранной ленты</string>
+    <string name="FavoriteFeedAddedChannels_one">**%1$d** канал добавлен в избранную ленту</string>
+    <string name="FavoriteFeedAddedChannels_few">**%1$d** канала добавлено в избранную ленту</string>
+    <string name="FavoriteFeedAddedChannels_many">**%1$d** каналов добавлено в избранную ленту</string>
+    <string name="FavoriteFeedAddedChannels_other">**%1$d** канала добавлено в избранную ленту</string>
+    <string name="FavoriteFeedRemovedChannels_one">**%1$d** канал убран из избранной ленты</string>
+    <string name="FavoriteFeedRemovedChannels_few">**%1$d** канала убрано из избранной ленты</string>
+    <string name="FavoriteFeedRemovedChannels_many">**%1$d** каналов убрано из избранной ленты</string>
+    <string name="FavoriteFeedRemovedChannels_other">**%1$d** канала убрано из избранной ленты</string>
 </resources>

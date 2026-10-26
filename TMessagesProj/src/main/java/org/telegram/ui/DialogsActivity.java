@@ -581,6 +581,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private ActionBarMenuSubItem pin2Item;
     @Nullable
     private ActionBarMenuSubItem addToFolderItem;
+    private ActionBarMenuSubItem favoriteFeedItem;
     @Nullable
     private ActionBarMenuSubItem removeFromFolderItem;
     @Nullable
@@ -712,6 +713,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private final static int add_to_folder = 109;
     private final static int remove_from_folder = 110;
     private final static int community_ungroup = 111;
+    private final static int favorite_feed = 112;
 
     private final static int ARCHIVE_ITEM_STATE_PINNED = 0;
     private final static int ARCHIVE_ITEM_STATE_SHOWED = 1;
@@ -2922,6 +2924,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 .add(NotificationCenter.folderBecomeEmpty)
                 .add(NotificationCenter.newSuggestionsAvailable)
                 .add(NotificationCenter.dialogsUnreadReactionsCounterChanged)
+                .add(NotificationCenter.favoriteChannelsUpdated)
                 .add(NotificationCenter.dialogsUnreadPollVotesCounterChanged)
                 .add(NotificationCenter.forceImportContactsStart)
                 .add(NotificationCenter.userEmojiStatusUpdated)
@@ -4008,6 +4011,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         undoView.showWithAction(did, UndoView.ACTION_REMOVED_FROM_FOLDER, neverShow.size(), filter, null, null);
                     }
                     hideActionMode(false);
+                } else if (id == favorite_feed) {
+                    FavoriteFeedUi.toggleSelected(DialogsActivity.this, new ArrayList<>(selectedDialogs));
+                    hideActionMode(true);
                 } else if (id == pin || id == read || id == delete || id == clear || id == mute || id == archive || id == block || id == archive2 || id == pin2) {
                     performSelectedDialogsAction(selectedDialogs, id, true, false);
                 }
@@ -6748,6 +6754,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         addToFolderItem = otherItem.addSubItem(add_to_folder, R.drawable.msg_addfolder, LocaleController.getString(R.string.FilterAddTo));
         removeFromFolderItem = otherItem.addSubItem(remove_from_folder, R.drawable.msg_removefolder, LocaleController.getString(R.string.FilterRemoveFrom));
         readItem = otherItem.addSubItem(read, R.drawable.msg_markread, LocaleController.getString(R.string.MarkAsRead));
+        favoriteFeedItem = otherItem.addSubItem(favorite_feed, FavoriteFeedUi.getToggleIcon(false), FavoriteFeedUi.getToggleText(false));
         clearItem = otherItem.addSubItem(clear, R.drawable.msg_clear, LocaleController.getString(R.string.ClearHistory));
         blockItem = otherItem.addSubItem(block, R.drawable.msg_block, LocaleController.getString(R.string.BlockUser));
 
@@ -9927,6 +9934,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 blockItem.setVisibility(View.VISIBLE);
             }
         }
+        FavoriteFeedUi.updateSelectionItem(favoriteFeedItem, currentAccount, selectedDialogs);
         if (removeFromFolderItem != null) {
             boolean cantRemoveFromFolder = filterTabsView == null || filterTabsView.getVisibility() != View.VISIBLE || filterTabsView.currentTabIsDefault();
             if (!cantRemoveFromFolder) {
@@ -10558,7 +10566,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         } else if (id == NotificationCenter.dialogsUnreadPollVotesCounterChanged) {
             updateVisibleRows(0);
-        } else if (id == NotificationCenter.dialogsUnreadReactionsCounterChanged) {
+        } else if (id == NotificationCenter.dialogsUnreadReactionsCounterChanged || id == NotificationCenter.favoriteChannelsUpdated) {
             updateVisibleRows(0);
         } else if (id == NotificationCenter.emojiLoaded) {
             if (viewPages != null) {

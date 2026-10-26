@@ -158,6 +158,7 @@ import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.EmojiData;
 import org.telegram.messenger.FactCheckController;
+import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.FlagSecureReason;
@@ -457,6 +458,7 @@ public class ChatActivity extends BaseFragment implements
     protected ActionBarMenuItem searchItem;
     protected ActionBarMenuItem topicCreateItem;
     private ActionBarMenuItem.Item translateItem;
+    private ActionBarMenuItem.Item favoriteFeedItem;
     private ActionBarMenuItem searchIconItem;
     private ActionBarMenu.LazyItem audioCallIconItem;
     private boolean searchItemVisible;
@@ -1661,6 +1663,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int change_colors = 27;
     private final static int tag_message = 28;
     private final static int boost_group = 29;
+    private final static int favorite_feed = 75;
 
     private final static int bot_help = 30;
     private final static int bot_settings = 31;
@@ -3938,6 +3941,9 @@ public class ChatActivity extends BaseFragment implements
                     }
                 } else if (id == mute) {
                     toggleMute(false);
+                } else if (id == favorite_feed) {
+                    FavoriteFeedUi.toggle(ChatActivity.this, dialog_id);
+                    FavoriteFeedUi.updateItem(favoriteFeedItem, currentAccount, dialog_id);
                 } else if (id == add_shortcut) {
                     try {
                         getMediaDataController().installShortcut(currentUser.id, MediaDataController.SHORTCUT_TYPE_USER_OR_CHAT);
@@ -4489,6 +4495,10 @@ public class ChatActivity extends BaseFragment implements
             }
             if (currentUser != null && currentUser.self && getDialogId() != UserObject.VERIFY) {
                 headerItem.lazilyAddSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
+            }
+            if (chatMode == MODE_DEFAULT && !isTopic && FavoriteChannelsController.canBeFavorite(currentChat)) {
+                favoriteFeedItem = headerItem.lazilyAddSubItem(favorite_feed, FavoriteFeedUi.getToggleIcon(false), FavoriteFeedUi.getToggleText(false));
+                FavoriteFeedUi.updateItem(favoriteFeedItem, currentAccount, dialog_id);
             }
             if (!isTopic && !ChatObject.isMonoForum(currentChat)) {
                 clearHistoryItem = headerItem.lazilyAddSubItem(clear_history, R.drawable.msg_clear,
@@ -30058,6 +30068,7 @@ public class ChatActivity extends BaseFragment implements
     public void onResume() {
         super.onResume();
         checkShowBlur(false);
+        FavoriteFeedUi.updateItem(favoriteFeedItem, currentAccount, dialog_id);
         activityResumeTime = System.currentTimeMillis();
         if (openImport && getSendMessagesHelper().getImportingHistory(dialog_id) != null) {
             ImportingAlert alert = new ImportingAlert(getParentActivity(), null, this, themeDelegate);

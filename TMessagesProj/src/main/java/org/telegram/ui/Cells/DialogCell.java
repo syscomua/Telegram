@@ -69,6 +69,7 @@ import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.Emoji;
+import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.ImageLocation;
@@ -129,6 +130,7 @@ import org.telegram.ui.Components.VectorAvatarThumbDrawable;
 import org.telegram.ui.Components.dialogs.DialogMediaIconsHelper;
 import org.telegram.ui.Components.spoilers.SpoilerEffect;
 import org.telegram.ui.DialogsActivity;
+import org.telegram.ui.FavoriteFeedUi;
 import org.telegram.ui.FilterCreateActivity;
 import org.telegram.ui.RightSlidingDialogContainer;
 import org.telegram.ui.Stars.StarsIntroActivity;
@@ -5003,6 +5005,9 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
     public boolean drawAvatarOverlays(Canvas canvas) {
         boolean needInvalidate = false, stars = false;
+        if (chat != null && isDialogCell && currentDialogFolderId == 0 && FavoriteChannelsController.getInstance(currentAccount).isFavorite(currentDialogId)) {
+            FavoriteFeedUi.drawAvatarBadge(canvas, avatarImage, checkBox != null && checkBox.isChecked() ? 1.0f - checkBox.getProgress() : 1.0f, resourcesProvider);
+        }
         if (chat != null && (chat.flags2 & 2048) != 0) {
             stars = true;
             float bottom =  avatarImage.getImageY2();

@@ -11630,4 +11630,13 @@
     <string name="NoPaidMessagesTokenUsed">un1 used your QR code and can message you for free</string>
     <string name="NoPaidMessagesTokenUsedOut">You used the QR code of un1 and can message them for free</string>
     <string name="NoPaidMessagesTokenImported">You can now message **%1$s** for free.</string>
+    <!--favorite feed-->
+    <string name="FavoriteFeedAdd">Add to Favorite Feed</string>
+    <string name="FavoriteFeedRemove">Remove from Favorite Feed</string>
+    <string name="FavoriteFeedAdded">**%1$s** added to Favorite Feed</string>
+    <string name="FavoriteFeedRemoved">**%1$s** removed from Favorite Feed</string>
+    <string name="FavoriteFeedAddedChannels_one">**%1$d** channel added to Favorite Feed</string>
+    <string name="FavoriteFeedAddedChannels_other">**%1$d** channels added to Favorite Feed</string>
+    <string name="FavoriteFeedRemovedChannels_one">**%1$d** channel removed from Favorite Feed</string>
+    <string name="FavoriteFeedRemovedChannels_other">**%1$d** channels removed from Favorite Feed</string>
 </resources>

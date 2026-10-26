@@ -276,4 +276,17 @@
     <string name="RemindTodayAt">\'Нагадати сьогодні,\' HH:mm</string>
     <string name="RemindDayAt">\'Нагадати\' d MMM\',\' HH:mm</string>
     <string name="RemindDayYearAt">\'Нагадати\' d MMM yyyy\',\' HH:mm</string>
+    <!--favorite feed-->
+    <string name="FavoriteFeedAdd">Додати до обраної стрічки</string>
+    <string name="FavoriteFeedRemove">Прибрати з обраної стрічки</string>
+    <string name="FavoriteFeedAdded">**%1$s** додано до обраної стрічки</string>
+    <string name="FavoriteFeedRemoved">**%1$s** прибрано з обраної стрічки</string>
+    <string name="FavoriteFeedAddedChannels_one">**%1$d** канал додано до обраної стрічки</string>
+    <string name="FavoriteFeedAddedChannels_few">**%1$d** канали додано до обраної стрічки</string>
+    <string name="FavoriteFeedAddedChannels_many">**%1$d** каналів додано до обраної стрічки</string>
+    <string name="FavoriteFeedAddedChannels_other">**%1$d** каналу додано до обраної стрічки</string>
+    <string name="FavoriteFeedRemovedChannels_one">**%1$d** канал прибрано з обраної стрічки</string>
+    <string name="FavoriteFeedRemovedChannels_few">**%1$d** канали прибрано з обраної стрічки</string>
+    <string name="FavoriteFeedRemovedChannels_many">**%1$d** каналів прибрано з обраної стрічки</string>
+    <string name="FavoriteFeedRemovedChannels_other">**%1$d** каналу прибрано з обраної стрічки</string>
 </resources>

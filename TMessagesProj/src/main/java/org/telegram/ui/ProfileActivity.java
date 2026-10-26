@@ -143,6 +143,7 @@ import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.DocumentObject;
 import org.telegram.messenger.Emoji;
+import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.FlagSecureReason;
@@ -456,6 +457,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private ActionBarMenuItem otherItem;
     private ActionBarMenuItem searchItem;
     private ActionBarMenuSubItem editColorItem;
+    private ActionBarMenuSubItem favoriteFeedItem;
     private ActionBarMenuSubItem linkItem;
     private ActionBarMenuSubItem setUsernameItem;
     private ImageView ttlIconView;
@@ -606,6 +608,7 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
     private final static int enable_no_forwards = 46;
     private final static int disable_no_forwards = 47;
     private final static int send_money = 48;
+    private final static int favorite_feed = 49;
 
     private Rect rect = new Rect();
 
@@ -2743,6 +2746,9 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     presentFragment(fragment);
                 } else if (id == share) {
                     onShareClicked();
+                } else if (id == favorite_feed) {
+                    FavoriteFeedUi.toggle(ProfileActivity.this, -chatId);
+                    FavoriteFeedUi.updateItem(favoriteFeedItem, currentAccount, -chatId);
                 } else if (id == add_shortcut) {
                     try {
                         long did;
@@ -12335,6 +12341,10 @@ public class ProfileActivity extends BaseFragment implements NotificationCenter.
                     }
                     if (topicId == 0) {
                         otherItem.addSubItem(add_shortcut, R.drawable.msg_home, LocaleController.getString(R.string.AddShortcut));
+                    }
+                    if (topicId == 0 && FavoriteChannelsController.canBeFavorite(chat)) {
+                        favoriteFeedItem = otherItem.addSubItem(favorite_feed, FavoriteFeedUi.getToggleIcon(false), FavoriteFeedUi.getToggleText(false));
+                        FavoriteFeedUi.updateItem(favoriteFeedItem, currentAccount, -chatId);
                     }
                     if (currentChat.creator) {
                         otherItem.addColoredGap();
