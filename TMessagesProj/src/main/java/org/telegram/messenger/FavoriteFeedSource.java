@@ -5,6 +5,7 @@ import android.text.TextUtils;
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
+import org.telegram.tgnet.SerializedData;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ChatActivity;
 
@@ -64,8 +65,11 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
     private boolean refreshed;
     private int cursorDate;
     private int cursorMid;
+    /** Next id for older pages (goes down) and for posts arriving live (goes up). */
     private int nextId;
-    private final HashSet<String> delivered = new HashSet<>();
+    private int nextNewId;
+    /** "dialogId_mid" of every post given to ChatActivity -> its generated id there */
+    private final HashMap<String, Integer> idsByKey = new HashMap<>();
 
     /** Oldest locally known post per channel: {date, mid}. */
     private final HashMap<Long, int[]> oldestLocal = new HashMap<>();
@@ -118,7 +122,8 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         cursorMid = 0;
         // newest first, so ids go down; room above is left for posts arriving later
         nextId = Integer.MAX_VALUE / 2;
-        delivered.clear();
+        nextNewId = nextId + 1;
+        idsByKey.clear();
         oldestLocal.clear();
         oldestLocalLoaded = false;
         exhausted.clear();
@@ -271,15 +276,10 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         final ArrayList<MessageObject> objects = new ArrayList<>();
         for (int a = 0; a < page.size(); a++) {
             final TLRPC.Message message = page.get(a);
-            if (!delivered.add(key(message.dialog_id, message.id))) {
+            if (idsByKey.containsKey(key(message.dialog_id, message.id))) {
                 continue;
             }
-            final MessageObject object = new MessageObject(currentAccount, message, true, true);
-            // channel avatar next to each post, as Saved Messages shows the source
-            object.forceAvatar = true;
-            message.realId = message.id;
-            message.id = nextId--;
-            objects.add(object);
+            objects.add(toFeedObject(message, nextId--));
         }
         result.messages.addAll(objects);
         result.loading = false;
@@ -289,6 +289,97 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         final NotificationCenter center = NotificationCenter.getInstance(currentAccount);
         center.postNotificationName(NotificationCenter.messagesDidLoad, 0L, objects.size(), objects, false, 0, 0, 0, 0, 2, true, guid, loadIndex, 0, 0, ChatActivity.MODE_SEARCH);
         center.postNotificationName(NotificationCenter.hashtagSearchUpdated, guid, result.count, result.endReached, 0, 0, 0);
+    }
+
+    /** Message of the feed: generated id, the original one in realId, channel avatar shown. */
+    private MessageObject toFeedObject(TLRPC.Message message, int feedId) {
+        idsByKey.put(key(message.dialog_id, message.id), feedId);
+        message.realId = message.id;
+        message.id = feedId;
+        final MessageObject object = new MessageObject(currentAccount, message, true, true);
+        // channel avatar next to each post, as Saved Messages shows the source
+        object.forceAvatar = true;
+        return object;
+    }
+
+    /** The same message may be open in its channel at the same time: never change its id there. */
+    private static TLRPC.Message copyMessage(MessageObject object) {
+        final TLRPC.Message message = object.messageOwner;
+        final SerializedData out = new SerializedData(message.getObjectSize());
+        message.serializeToStream(out);
+        final SerializedData in = new SerializedData(out.toByteArray());
+        final TLRPC.Message copy = TLRPC.Message.TLdeserialize(in, in.readInt32(false), false);
+        out.cleanup();
+        in.cleanup();
+        if (copy != null) {
+            copy.dialog_id = object.getDialogId();
+            copy.attachPath = message.attachPath;
+        }
+        return copy;
+    }
+
+    private boolean isFeedChannel(long dialogId) {
+        return guid != 0 && channels.contains(dialogId);
+    }
+
+    /** New posts of favorite channels for an open feed (didReceiveNewMessages). */
+    public ArrayList<MessageObject> wrapNewMessages(long dialogId, ArrayList<MessageObject> objects) {
+        final ArrayList<MessageObject> result = new ArrayList<>();
+        if (!isFeedChannel(dialogId)) {
+            return result;
+        }
+        for (int a = 0; a < objects.size(); a++) {
+            final MessageObject object = objects.get(a);
+            if (object.getId() <= 0 || object.messageOwner instanceof TLRPC.TL_messageService || object.scheduled
+                || idsByKey.containsKey(key(dialogId, object.getId()))) {
+                continue;
+            }
+            final TLRPC.Message copy = copyMessage(object);
+            if (copy != null) {
+                result.add(toFeedObject(copy, nextNewId++));
+            }
+        }
+        this.result.messages.addAll(result);
+        this.result.count = this.result.messages.size();
+        return result;
+    }
+
+    /** Edited posts already in the feed (replaceMessagesObjects). */
+    public ArrayList<MessageObject> wrapEditedMessages(long dialogId, ArrayList<MessageObject> objects) {
+        final ArrayList<MessageObject> result = new ArrayList<>();
+        if (!isFeedChannel(dialogId)) {
+            return result;
+        }
+        for (int a = 0; a < objects.size(); a++) {
+            final MessageObject object = objects.get(a);
+            if (object == null) {
+                continue;
+            }
+            final Integer feedId = idsByKey.get(key(dialogId, object.getId()));
+            if (feedId == null) {
+                continue;
+            }
+            final TLRPC.Message copy = copyMessage(object);
+            if (copy != null) {
+                result.add(toFeedObject(copy, feedId));
+            }
+        }
+        return result;
+    }
+
+    /** Feed ids of deleted posts (messagesDeleted, channelId as posted). */
+    public ArrayList<Integer> mapDeletedIds(long channelId, ArrayList<Integer> ids) {
+        final ArrayList<Integer> result = new ArrayList<>();
+        if (channelId == 0 || !isFeedChannel(-channelId)) {
+            return result;
+        }
+        for (int a = 0; a < ids.size(); a++) {
+            final Integer feedId = idsByKey.remove(key(-channelId, ids.get(a)));
+            if (feedId != null) {
+                result.add(feedId);
+            }
+        }
+        return result;
     }
 
     private void updateOldestLocal(long dialogId, int date, int mid) {

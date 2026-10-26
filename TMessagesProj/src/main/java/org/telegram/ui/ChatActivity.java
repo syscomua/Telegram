@@ -159,6 +159,7 @@ import org.telegram.messenger.Emoji;
 import org.telegram.messenger.EmojiData;
 import org.telegram.messenger.FactCheckController;
 import org.telegram.messenger.FavoriteChannelsController;
+import org.telegram.messenger.FavoriteFeedSource;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.FlagSecureReason;
@@ -22317,6 +22318,16 @@ public class ChatActivity extends BaseFragment implements
             long did = (Long) args[0];
             ArrayList<MessageObject> arr = (ArrayList<MessageObject>) args[1];
             if (isInsideContainer) return;
+            if (isFavoriteFeed()) {
+                // new posts of favorite channels, with feed ids
+                if (!(Boolean) args[2]) {
+                    final ArrayList<MessageObject> feedMessages = FavoriteFeedSource.getInstance(currentAccount).wrapNewMessages(did, arr);
+                    if (!feedMessages.isEmpty()) {
+                        processNewMessages(feedMessages);
+                    }
+                }
+                return;
+            }
             if (did == dialog_id) {
                 boolean scheduled = (Boolean) args[2];
                 int mode = (Integer) args[3];
@@ -22622,6 +22633,13 @@ public class ChatActivity extends BaseFragment implements
             }
             ArrayList<Integer> markAsDeletedMessages = (ArrayList<Integer>) args[0];
             long channelId = (Long) args[1];
+            if (isFavoriteFeed()) {
+                final ArrayList<Integer> feedIds = FavoriteFeedSource.getInstance(currentAccount).mapDeletedIds(channelId, markAsDeletedMessages);
+                if (!feedIds.isEmpty()) {
+                    processDeletedMessages(feedIds, 0, false);
+                }
+                return;
+            }
             boolean update = args.length > 2 && (boolean) args[2];
             boolean sent = args.length > 3 && (boolean) args[3];
             int scheduledMessageId = args.length > 5 ? (int) args[5] : 0;
@@ -23700,6 +23718,13 @@ public class ChatActivity extends BaseFragment implements
             }
             if (messagePreviewParams != null) {
                 messagePreviewParams.checkEdits(messageObjects);
+            }
+            if (isFavoriteFeed()) {
+                final ArrayList<MessageObject> feedObjects = FavoriteFeedSource.getInstance(currentAccount).wrapEditedMessages(did, messageObjects);
+                if (!feedObjects.isEmpty()) {
+                    doOnIdle(() -> replaceMessageObjects(feedObjects, 0, false));
+                }
+                return;
             }
             if (did != dialog_id && did != mergeDialogId) {
                 return;
