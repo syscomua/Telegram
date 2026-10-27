@@ -162,7 +162,6 @@ import org.telegram.ui.Cells.ActiveGiftAuctionsHintCell;
 import org.telegram.ui.Cells.AnimatedStatusView;
 import org.telegram.ui.Cells.ArchiveHintInnerCell;
 import org.telegram.ui.Cells.DialogCell;
-import org.telegram.ui.Cells.FavoriteFeedCell;
 import org.telegram.ui.Cells.DialogsEmptyCell;
 import org.telegram.ui.Cells.DialogsHintCell;
 import org.telegram.ui.Cells.GraySectionCell;
@@ -2418,7 +2417,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
 
         @Override
         public int getMovementFlags(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
-            if (waitingForDialogsAnimationEnd(parentPage) || parentLayout != null && parentLayout.isInPreviewMode() || rightSlidingDialogContainer.hasFragment() || communityId != 0 || viewHolder.itemView instanceof FavoriteFeedCell) {
+            if (waitingForDialogsAnimationEnd(parentPage) || parentLayout != null && parentLayout.isInPreviewMode() || rightSlidingDialogContainer.hasFragment() || communityId != 0) {
                 return 0;
             }
             if (swipingFolder && swipeFolderBack) {
@@ -7884,12 +7883,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 delegate.didSelectStories(this);
                 return;
             }
-            if (adapter.getItemViewType(position) == DialogsAdapter.VIEW_TYPE_FAVORITE_FEED) {
-                if (!actionBar.isActionModeShowed()) {
-                    FavoriteFeedUi.openFeed(this);
-                }
-                return;
-            }
             if (object instanceof TLRPC.User) {
                 dialogId = ((TLRPC.User) object).id;
             } else if (object instanceof TLRPC.Chat) {
@@ -8296,9 +8289,6 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         if (adapter.getItemViewType(position) == DialogsAdapter.VIEW_TYPE_FORWARD_TO_STORIES_CELL) {
             return false;
-        }
-        if (adapter.getItemViewType(position) == DialogsAdapter.VIEW_TYPE_FAVORITE_FEED) {
-            return !actionBar.isActionModeShowed() && FavoriteFeedUi.showPlaceholderMenu(this, view);
         }
 
         if (!actionBar.isActionModeShowed() && !AndroidUtilities.isTablet() && !onlySelect && view instanceof DialogCell && !getMessagesController().isForum(((DialogCell) view).getDialogId()) && !rightSlidingDialogContainer.hasFragment()) {
@@ -10576,14 +10566,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         } else if (id == NotificationCenter.dialogsUnreadPollVotesCounterChanged) {
             updateVisibleRows(0);
-        } else if (id == NotificationCenter.dialogsUnreadReactionsCounterChanged) {
-            updateVisibleRows(0);
-        } else if (id == NotificationCenter.favoriteChannelsUpdated) {
-            if (viewPages != null) {
-                for (ViewPage viewPage : viewPages) {
-                    viewPage.updateList(false);
-                }
-            }
+        } else if (id == NotificationCenter.dialogsUnreadReactionsCounterChanged || id == NotificationCenter.favoriteChannelsUpdated) {
             updateVisibleRows(0);
         } else if (id == NotificationCenter.emojiLoaded) {
             if (viewPages != null) {

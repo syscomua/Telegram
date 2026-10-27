@@ -11640,15 +11640,12 @@
     <string name="FavoriteFeedRemovedChannels_one">**%1$d** channel removed from Favorite Feed</string>
     <string name="FavoriteFeedRemovedChannels_other">**%1$d** channels removed from Favorite Feed</string>
     <string name="FavoriteFeed">Favorite Feed</string>
-    <string name="FavoriteFeedNoPosts">No posts yet</string>
-    <string name="FavoriteFeedHide">Hide</string>
-    <string name="FavoriteFeedHidden">Favorite Feed hidden. It will come back when you add a channel.</string>
+    <string name="FavoriteFeedTab">Feed</string>
     <string name="FavoriteFeedChannels_one">%1$d channel</string>
     <string name="FavoriteFeedChannels_other">%1$d channels</string>
     <string name="FavoriteFeedEmptyHint">No channels in the feed yet. Open a channel, tap ⋮ and choose \"Add to Favorite Feed\".</string>
     <string name="FavoriteFeedSettings">Feed settings</string>
     <string name="FavoriteFeedOptions">Feed</string>
-    <string name="FavoriteFeedShowInList">Show in chat list</string>
     <string name="FavoriteFeedAutoScroll">Scroll to new posts</string>
     <string name="FavoriteFeedChannelsHeader">Channels</string>
     <string name="FavoriteFeedChannelsInfo">Tap ⋮ next to a channel to remove it from the feed. Channels you left or cannot access stay in the list but are not shown in the feed.</string>

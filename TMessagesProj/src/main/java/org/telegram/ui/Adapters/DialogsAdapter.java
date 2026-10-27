@@ -37,7 +37,6 @@ import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.ChatObject;
 import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.DialogObject;
-import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MessagesController;
@@ -55,7 +54,6 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.Cells.ArchiveHintCell;
 import org.telegram.ui.Cells.DialogCell;
-import org.telegram.ui.Cells.FavoriteFeedCell;
 import org.telegram.ui.Cells.DialogMeUrlCell;
 import org.telegram.ui.Cells.DialogsEmptyCell;
 import org.telegram.ui.Cells.DialogsHintCell;
@@ -112,8 +110,7 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
             VIEW_TYPE_GRAY_SECTION = 20,
             VIEW_TYPE_FORWARD_TO_STORIES_CELL = 21,
             VIEW_TYPE_HEADER_3 = 22,
-            VIEW_TYPE_DIALOG_COMMUNITY = 23,
-            VIEW_TYPE_FAVORITE_FEED = 24;
+            VIEW_TYPE_DIALOG_COMMUNITY = 23;
 
     private Context mContext;
     private ArchiveHintCell archiveHintCell;
@@ -185,9 +182,6 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
     }
 
     public int fixPosition(int position) {
-        if (favoriteFeedRow >= 0 && position > favoriteFeedRow) {
-            position--;
-        }
         if (hasChatlistHint) {
             position--;
         }
@@ -281,7 +275,6 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
     }
 
     int stableIdPointer = 10;
-    private int favoriteFeedRow = -1;
     LongSparseIntArray dialogsStableIds = new LongSparseIntArray();
     HashMap<String, Integer> dialogsHeaderStableIds = new HashMap<>();
 
@@ -391,8 +384,6 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
             this.emptyType = viewTypeEmpty;
             if (viewTypeEmpty == VIEW_TYPE_LAST_EMPTY) {
                 stableId = 1;
-            } else if (viewTypeEmpty == VIEW_TYPE_FAVORITE_FEED) {
-                stableId = 6;
             } else {
                 if (viewType == VIEW_TYPE_ARCHIVE_FULLSCREEN) {
                     stableId = 5;
@@ -689,9 +680,6 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
                     view.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
                 }
                 break;
-            case VIEW_TYPE_FAVORITE_FEED:
-                view = new FavoriteFeedCell(parentFragment, mContext, currentAccount);
-                break;
             case VIEW_TYPE_REQUIREMENTS:
                 view = new RequestPeerRequirementsCell(mContext);
                 break;
@@ -905,13 +893,6 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
     @Override
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int i) {
         switch (holder.getItemViewType()) {
-            case VIEW_TYPE_FAVORITE_FEED: {
-                FavoriteFeedCell cell = (FavoriteFeedCell) holder.itemView;
-                cell.useSeparator = true;
-                cell.update(0);
-                cell.checkHeight();
-                break;
-            }
             case VIEW_TYPE_FORWARD_TO_STORIES_CELL: {
                 TLRPC.Dialog nextDialog = (TLRPC.Dialog) getItem(i + 1);
 
@@ -1789,20 +1770,13 @@ public class DialogsAdapter extends RecyclerListView.SelectionAdapter implements
             itemInternals.add(new ItemInternal(VIEW_TYPE_FORWARD_TO_STORIES_CELL));
         }
 
-        favoriteFeedRow = -1;
         if (!stopUpdate) {
-            final int firstDialogRow = itemInternals.size();
             for (int k = 0; k < array.size(); k++) {
                 if (dialogsType == DialogsActivity.DIALOGS_TYPE_ADD_USERS_TO && array.get(k) instanceof DialogsActivity.DialogsHeader) {
                     itemInternals.add(new ItemInternal(VIEW_TYPE_HEADER_2, array.get(k)));
                 } else {
                     itemInternals.add(new ItemInternal(VIEW_TYPE_DIALOG, array.get(k)));
                 }
-            }
-            if (dialogsCount > 0 && dialogsType == DialogsActivity.DIALOGS_TYPE_DEFAULT && folderId == 0 && (filter == null || filter.isDefault()) && parentFragment != null && !parentFragment.isOnlySelect() && FavoriteChannelsController.getInstance(currentAccount).isPlaceholderVisible()) {
-                // under the archive row, above everything else
-                favoriteFeedRow = firstDialogRow + (!array.isEmpty() && array.get(0) instanceof TLRPC.TL_dialogFolder ? 1 : 0);
-                itemInternals.add(favoriteFeedRow, new ItemInternal(VIEW_TYPE_FAVORITE_FEED));
             }
 
             if (communityId == 0 && !forceShowEmptyCell && dialogsType != 7 && dialogsType != 8 && !MessagesController.getInstance(currentAccount).isDialogsEndReached(folderId)) {

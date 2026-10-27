@@ -42,6 +42,7 @@ import org.telegram.messenger.BuildConfig;
 import org.telegram.messenger.ContactsController;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.Emoji;
+import org.telegram.messenger.FavoriteChannelsController;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.LiteMode;
 import org.telegram.messenger.LocaleController;
@@ -273,24 +274,9 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     public void onResume() {
         super.onResume();
         blur3_updateColors();
-        checkContactsTabBadge();
         checkUnreadCount(true);
 
         showAccountChangeHint();
-    }
-
-    private void checkContactsTabBadge() {
-        if (tabsView != null && tabs[INDEX_CONTACTS] != null) {
-            final boolean hasPermission = Build.VERSION.SDK_INT >= 23 && ContactsController.hasContactsPermission();
-            if (hasPermission) {
-                MessagesController.getGlobalNotificationsSettings().edit().putBoolean("askAboutContacts2", true).apply();
-            }
-            if (Build.VERSION.SDK_INT >= 23 && UserConfig.getInstance(currentAccount).syncContacts && !hasPermission && MessagesController.getGlobalNotificationsSettings().getBoolean("askAboutContacts2", true)) {
-                tabs[INDEX_CONTACTS].setCounter("!", true, true);
-            } else {
-                tabs[INDEX_CONTACTS].setCounter(null, true, true);
-            }
-        }
     }
 
     @Override
@@ -313,7 +299,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
         tabs = new GlassTabView[5];
         tabs[INDEX_CHATS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CHATS, R.string.MainTabsChats);
-        tabs[INDEX_CONTACTS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CONTACTS, R.string.MainTabsContacts);
+        // the favorite feed in place of contacts, which move to its long press menu
+        tabs[INDEX_CONTACTS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.FAVORITE_FEED, R.string.FavoriteFeedTab);
         tabs[INDEX_SETTINGS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.SETTINGS, R.string.Settings);
         tabs[INDEX_CALLS] = GlassTabView.createMainTab(context, resourceProvider, GlassTabView.TabAnimation.CALLS, R.string.MainTabsCalls);
         tabs[INDEX_PROFILE] = GlassTabView.createAvatar(context, resourceProvider, currentAccount, R.string.MainTabsProfile);
@@ -333,6 +320,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             final int position = indexToPosition(index);
             tabs[index].setOnClickListener(v -> {
                 if (viewPager.isManualScrolling() || viewPager.isTouch()) {
+                    return;
+                }
+
+                if (position == POSITION_CONTACTS) {
+                    // a chat screen does not live in the pager: opened over the tabs, as from a chat row
+                    FavoriteFeedUi.openFeed(this);
                     return;
                 }
 
@@ -409,11 +402,21 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         } else {
             tabs[INDEX_CHATS].setCounter(null, false, animated);
         }
+
+        final int feedUnreadCount = FavoriteChannelsController.getInstance(currentAccount).getUnreadCount();
+        tabs[INDEX_CONTACTS].setCounter(feedUnreadCount > 0 ? LocaleController.formatNumber(feedUnreadCount, ',') : null, false, animated);
     }
 
     public boolean openContactsSelector(View anchor) {
         if (getContext() == null || getParentActivity() == null) return false;
         final ItemOptions o = ItemOptions.makeOptions(this, anchor);
+        o.add(R.drawable.msg_contacts, getString(R.string.Contacts), () -> {
+            Bundle args = new Bundle();
+            args.putBoolean("needPhonebook", true);
+            args.putBoolean("needFinishFragment", false);
+            presentFragment(new ContactsActivity(args));
+        });
+        o.add(R.drawable.msg_settings_old, getString(R.string.FavoriteFeedSettings), () -> presentFragment(new FavoriteFeedSettingsActivity()));
         o.add(R.drawable.msg_contact_add, getString(R.string.NewContact), () -> {
             new NewContactBottomSheet(this, getContext()).show();
         });
@@ -892,6 +895,11 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
     }
 
     private boolean canScrollInternal(MotionEvent ev, boolean forward) {
+        // the feed tab has no page: contacts behind it are reached from its long press menu
+        final int current = viewPager.getCurrentPosition();
+        if (forward && current == POSITION_CONTACTS - 1 || !forward && current == POSITION_CONTACTS + 1) {
+            return false;
+        }
         final BaseFragment fragment = getCurrentVisibleFragment();
         if (fragment instanceof TabFragmentDelegate) {
             final TabFragmentDelegate delegate = (TabFragmentDelegate) fragment;
@@ -1005,8 +1013,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             if (tabs != null && tabs[INDEX_PROFILE] != null) {
                 tabs[INDEX_PROFILE].updateUserAvatar(currentAccount);
             }
-        } else if (id == NotificationCenter.contactsPermissionBadgeCheck) {
-            checkContactsTabBadge();
+        } else if (id == NotificationCenter.favoriteChannelsUpdated) {
+            checkUnreadCount(fragmentView != null && fragmentView.isAttachedToWindow());
         }
     }
 
@@ -1023,7 +1031,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             .add(NotificationCenter.updateInterfaces)
             .add(NotificationCenter.callTabsVisibleToggled)
             .add(NotificationCenter.mainUserInfoChanged)
-            .add(NotificationCenter.contactsPermissionBadgeCheck)
+            .add(NotificationCenter.favoriteChannelsUpdated)
             .addGlobal(NotificationCenter.appUpdateAvailable)
             .addGlobal(NotificationCenter.appUpdateLoading)
             .addGlobal(NotificationCenter.needSetDayNightTheme);

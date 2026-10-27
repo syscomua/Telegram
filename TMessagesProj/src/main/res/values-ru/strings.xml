@@ -277,9 +277,7 @@
     <string name="FavoriteFeedRemovedChannels_many">**%1$d** каналов убрано из избранной ленты</string>
     <string name="FavoriteFeedRemovedChannels_other">**%1$d** канала убрано из избранной ленты</string>
     <string name="FavoriteFeed">Избранная лента</string>
-    <string name="FavoriteFeedNoPosts">Пока нет постов</string>
-    <string name="FavoriteFeedHide">Скрыть</string>
-    <string name="FavoriteFeedHidden">Избранная лента скрыта. Она вернётся, когда вы добавите канал.</string>
+    <string name="FavoriteFeedTab">Лента</string>
     <string name="FavoriteFeedChannels_one">%1$d канал</string>
     <string name="FavoriteFeedChannels_few">%1$d канала</string>
     <string name="FavoriteFeedChannels_many">%1$d каналов</string>
@@ -287,7 +285,6 @@
     <string name="FavoriteFeedEmptyHint">В ленте пока нет каналов. Откройте канал, нажмите ⋮ и выберите «Добавить в избранную ленту».</string>
     <string name="FavoriteFeedSettings">Настройки ленты</string>
     <string name="FavoriteFeedOptions">Лента</string>
-    <string name="FavoriteFeedShowInList">Показывать в списке чатов</string>
     <string name="FavoriteFeedAutoScroll">Прокручивать к новым постам</string>
     <string name="FavoriteFeedChannelsHeader">Каналы</string>
     <string name="FavoriteFeedChannelsInfo">Нажмите ⋮ рядом с каналом, чтобы убрать его из ленты. Каналы, из которых вы вышли или к которым нет доступа, остаются в списке, но в ленте не показываются.</string>

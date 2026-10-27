@@ -114,41 +114,8 @@ public class FavoriteChannelsController extends BaseController {
         return count;
     }
 
-    /** Newest top message among the favorite channels, from the loaded chat list. */
-    public MessageObject getLastMessage() {
-        ensureLoaded();
-        MessageObject last = null;
-        for (long did : channels.keySet()) {
-            final ArrayList<MessageObject> messages = getMessagesController().dialogMessage.get(did);
-            if (messages == null || messages.isEmpty()) {
-                continue;
-            }
-            final MessageObject message = messages.get(0);
-            if (last == null || message.messageOwner.date > last.messageOwner.date) {
-                last = message;
-            }
-        }
-        return last;
-    }
-
     private SharedPreferences getSettings() {
         return ApplicationLoader.applicationContext.getSharedPreferences("favorite_feed_settings", Activity.MODE_PRIVATE);
-    }
-
-    /** The feed row is shown in the chat list while there is at least one channel, unless hidden. */
-    public boolean isPlaceholderVisible() {
-        return getCount() > 0 && !isPlaceholderHidden();
-    }
-
-    public boolean isPlaceholderHidden() {
-        ensureLoaded();
-        return getSettings().getBoolean("hidden_" + loadedForUserId, false);
-    }
-
-    public void setPlaceholderHidden(boolean hidden) {
-        ensureLoaded();
-        getSettings().edit().putBoolean("hidden_" + loadedForUserId, hidden).apply();
-        getNotificationCenter().postNotificationName(NotificationCenter.favoriteChannelsUpdated);
     }
 
     /** Scroll an open feed to a new post when its bottom is on screen, as chats do. Off by default. */

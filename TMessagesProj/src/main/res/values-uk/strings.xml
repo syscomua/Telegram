@@ -290,9 +290,7 @@
     <string name="FavoriteFeedRemovedChannels_many">**%1$d** каналів прибрано з обраної стрічки</string>
     <string name="FavoriteFeedRemovedChannels_other">**%1$d** каналу прибрано з обраної стрічки</string>
     <string name="FavoriteFeed">Обрана стрічка</string>
-    <string name="FavoriteFeedNoPosts">Поки немає дописів</string>
-    <string name="FavoriteFeedHide">Приховати</string>
-    <string name="FavoriteFeedHidden">Обрану стрічку приховано. Вона повернеться, коли ви додасте канал.</string>
+    <string name="FavoriteFeedTab">Стрічка</string>
     <string name="FavoriteFeedChannels_one">%1$d канал</string>
     <string name="FavoriteFeedChannels_few">%1$d канали</string>
     <string name="FavoriteFeedChannels_many">%1$d каналів</string>
@@ -300,7 +298,6 @@
     <string name="FavoriteFeedEmptyHint">У стрічці поки немає каналів. Відкрийте канал, натисніть ⋮ і виберіть «Додати до обраної стрічки».</string>
     <string name="FavoriteFeedSettings">Налаштування стрічки</string>
     <string name="FavoriteFeedOptions">Стрічка</string>
-    <string name="FavoriteFeedShowInList">Показувати у списку чатів</string>
     <string name="FavoriteFeedAutoScroll">Прокручувати до нових дописів</string>
     <string name="FavoriteFeedChannelsHeader">Канали</string>
     <string name="FavoriteFeedChannelsInfo">Натисніть ⋮ біля каналу, щоб прибрати його зі стрічки. Канали, з яких ви вийшли або до яких немає доступу, залишаються у списку, але в стрічці не показуються.</string>
