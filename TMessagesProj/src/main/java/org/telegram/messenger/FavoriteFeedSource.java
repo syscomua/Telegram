@@ -98,13 +98,17 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         return dialogId + "_" + mid;
     }
 
-    /** Left or inaccessible channels stay in the list but are not part of the feed. */
+    /**
+     * Left or inaccessible channels stay in the list but are not part of the feed.
+     * A channel not loaded into memory yet (the feed restored right after the app started)
+     * stays in: its posts are read from the database all the same.
+     */
     private ArrayList<Long> getAvailableChannels() {
         final ArrayList<Long> all = FavoriteChannelsController.getInstance(currentAccount).getAll();
         final ArrayList<Long> available = new ArrayList<>();
         for (int a = 0; a < all.size(); a++) {
             final TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-all.get(a));
-            if (chat != null && !(chat instanceof TLRPC.TL_channelForbidden) && !ChatObject.isNotInChat(chat)) {
+            if (chat == null || !(chat instanceof TLRPC.TL_channelForbidden) && !ChatObject.isNotInChat(chat)) {
                 available.add(all.get(a));
             }
         }
@@ -146,13 +150,22 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         result.loading = true;
         this.loadIndex = loadIndex;
         if (channels.isEmpty()) {
-            deliver(new ArrayList<>(), true, 0, 0);
+            // never answer inside the call: ChatActivity may be in onFragmentCreate, without views yet
+            final int gen = generation;
+            AndroidUtilities.runOnUIThread(() -> {
+                if (gen == generation) {
+                    deliver(new ArrayList<>(), true, 0, 0);
+                }
+            });
             return;
         }
         if (!refreshed) {
             refreshed = true;
             for (int a = 0; a < channels.size(); a++) {
-                enqueueFetch(channels.get(a), 0);
+                // without the chat in memory there is no access hash for a request yet
+                if (MessagesController.getInstance(currentAccount).getChat(-channels.get(a)) != null) {
+                    enqueueFetch(channels.get(a), 0);
+                }
             }
             runAfterFetches(this::readPage);
         } else {
@@ -253,6 +266,11 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                 for (int a = 0; a < channels.size(); a++) {
                     final long dialogId = channels.get(a);
                     if (exhausted.contains(dialogId)) {
+                        continue;
+                    }
+                    if (MessagesController.getInstance(currentAccount).getChat(-dialogId) == null) {
+                        // not in memory: no request possible, only what the database has
+                        exhausted.add(dialogId);
                         continue;
                     }
                     final int[] old = oldestLocal.get(dialogId);

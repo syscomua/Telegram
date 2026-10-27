@@ -24839,8 +24839,9 @@ public class ChatActivity extends BaseFragment implements
             updateSearchButtons(mask, hashtagSearchSelectedIndex, count);
             if (jumpToMessageId != 0) {
                 scrollToMessageId(jumpToMessageId, 0, true, 0, true, 0);
-            } else {
-                if (messagesSearchAdapter.loadedCount <= 0 && messagesSearchListView.getLayoutManager() != null) {
+            } else if (messagesSearchAdapter != null) {
+                // no views yet when a restored fragment gets its first page during onFragmentCreate
+                if (messagesSearchAdapter.loadedCount <= 0 && messagesSearchListView != null && messagesSearchListView.getLayoutManager() != null) {
                     messagesSearchListView.getLayoutManager().scrollToPosition(0);
                 }
                 messagesSearchAdapter.notifyDataSetChanged();
