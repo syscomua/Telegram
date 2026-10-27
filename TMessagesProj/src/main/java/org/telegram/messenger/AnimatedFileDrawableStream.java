@@ -177,8 +177,10 @@ public class AnimatedFileDrawableStream implements FileLoadOperationStream {
 
     @Override
     public void newDataAvailable() {
-        if (countDownLatch != null) {
-            countDownLatch.countDown();
+        // read once: cancel() on another thread can null the field between the check and the call
+        final CountDownLatch latch = countDownLatch;
+        if (latch != null) {
+            latch.countDown();
             countDownLatch = null;
         }
     }
