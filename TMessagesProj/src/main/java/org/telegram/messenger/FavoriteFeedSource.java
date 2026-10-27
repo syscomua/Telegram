@@ -204,8 +204,8 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         // for the first page: where each channel with unread posts stops being read
         final HashMap<Long, Integer> readInboxMax = new HashMap<>();
         if (fromDate == 0) {
+            final MessagesController controller = MessagesController.getInstance(currentAccount);
             for (int a = 0; a < channels.size(); a++) {
-                final MessagesController controller = MessagesController.getInstance(currentAccount);
                 final TLRPC.Dialog dialog = controller.dialogs_dict.get(channels.get(a));
                 if (dialog != null && dialog.unread_count > 0) {
                     readInboxMax.put(dialog.id, getReadInboxMax(controller, dialog));
@@ -227,7 +227,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             try {
                 for (HashMap.Entry<Long, Integer> entry : readInboxMax.entrySet()) {
                     cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
-                        "SELECT MIN(date) FROM messages_v2 WHERE uid = %d AND mid > %d AND out = 0",entry.getKey(), entry.getValue()));
+                        "SELECT MIN(date) FROM messages_v2 WHERE uid = %d AND mid > %d AND out = 0", entry.getKey(), entry.getValue()));
                     if (cursor.next() && !cursor.isNull(0)) {
                         final int date = cursor.intValue(0);
                         if (date > 0 && (unreadDate == 0 || date < unreadDate)) {

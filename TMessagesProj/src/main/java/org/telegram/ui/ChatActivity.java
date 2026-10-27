@@ -19778,10 +19778,16 @@ public class ChatActivity extends BaseFragment implements
     /** Puts the oldest post not earlier than the date at the top, without the scroll animation of jumpToDate. */
     private void scrollFeedToDate(int date) {
         for (int a = messages.size() - 1; a >= 0; a--) {
-            final MessageObject message = messages.get(a);
+            MessageObject message = messages.get(a);
             if (message.messageOwner.date >= date && message.getId() != 0) {
+                // an album is scrolled to by its primary part, as scrollToMessageId does
+                final MessageObject.GroupedMessages group = groupedMessagesMap.get(message.getGroupId());
+                if (message.getGroupId() != 0 && group != null && group.findPrimaryMessageObject() != null) {
+                    message = group.findPrimaryMessageObject();
+                }
+                final int index = messages.indexOf(message);
                 chatAdapter.updateRowsSafe();
-                chatLayoutManager.scrollToPositionWithOffset(chatAdapter.messagesStartRow + a, -dp(11), false);
+                chatLayoutManager.scrollToPositionWithOffset(chatAdapter.messagesStartRow + (index >= 0 ? index : a), -dp(11), false);
                 return;
             }
         }
