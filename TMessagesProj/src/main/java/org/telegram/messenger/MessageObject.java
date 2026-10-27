@@ -8411,6 +8411,10 @@ public class MessageObject {
         if (isRepostPreview) {
             return false;
         }
+        if (isFavoriteFeedPost) {
+            // forwarded from the long-press menu: the side button only narrows the bubbles
+            return false;
+        }
         if (sideMenuEnabled) {
             return false;
         }
