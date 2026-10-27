@@ -7049,6 +7049,10 @@ public class ChatActivity extends BaseFragment implements
         });
 
         contentView.addView(chatListView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+        if (isFavoriteFeed() && !feedPositioned) {
+            // shown once it stands at the first unread post, not at the newest first
+            chatListView.setAlpha(0f);
+        }
 
         chatActivityFadeView = new ChatActivityFadeView(context);
         chatActivityFadeView.setup(navbarContentDrawableFactory);
@@ -19746,9 +19750,12 @@ public class ChatActivity extends BaseFragment implements
         final int date = FavoriteFeedSource.getInstance(currentAccount).getFirstUnreadDate();
         if (date == 0) {
             feedPositioned = true;
+            showFeedList();
             return;
         }
         feedPositioning = true;
+        // a slow server page must not leave the feed blank: show it where it is
+        AndroidUtilities.runOnUIThread(this::showFeedList, 5000);
         feedJumpDate = date;
         continueFeedJump();
     }
@@ -19756,8 +19763,27 @@ public class ChatActivity extends BaseFragment implements
     private void onFeedJumpDone() {
         if (feedPositioning) {
             feedPositioning = false;
-            // after the scroll to the first unread post has settled
+            showFeedList();
+            // after the first unread post has been laid out
             AndroidUtilities.runOnUIThread(() -> feedPositioned = true, 600);
+        }
+    }
+
+    private void showFeedList() {
+        if (chatListView != null && chatListView.getAlpha() < 1f) {
+            chatListView.animate().alpha(1f).setDuration(150).start();
+        }
+    }
+
+    /** Puts the oldest post not earlier than the date at the top, without the scroll animation of jumpToDate. */
+    private void scrollFeedToDate(int date) {
+        for (int a = messages.size() - 1; a >= 0; a--) {
+            final MessageObject message = messages.get(a);
+            if (message.messageOwner.date >= date && message.getId() != 0) {
+                chatAdapter.updateRowsSafe();
+                chatLayoutManager.scrollToPositionWithOffset(chatAdapter.messagesStartRow + a, -dp(11), false);
+                return;
+            }
         }
     }
 
@@ -19821,7 +19847,11 @@ public class ChatActivity extends BaseFragment implements
         if (messages.get(messages.size() - 1).messageOwner.date <= feedJumpDate || endReached[0]) {
             final int date = feedJumpDate;
             feedJumpDate = 0;
-            jumpToDate(date);
+            if (feedPositioning) {
+                scrollFeedToDate(date);
+            } else {
+                jumpToDate(date);
+            }
             onFeedJumpDone();
         } else if (!loading) {
             loading = true;
