@@ -101,6 +101,12 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         return firstUnreadDate;
     }
 
+    /** markDialogAsRead moves only dialogs_read_inbox_max: the dialog keeps the old value until the server's update. */
+    public static int getReadInboxMax(MessagesController controller, TLRPC.Dialog dialog) {
+        final Integer local = controller.dialogs_read_inbox_max.get(dialog.id);
+        return local == null ? dialog.read_inbox_max_id : Math.max(local, dialog.read_inbox_max_id);
+    }
+
     private static String key(long dialogId, int mid) {
         return dialogId + "_" + mid;
     }
@@ -199,9 +205,10 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         final HashMap<Long, Integer> readInboxMax = new HashMap<>();
         if (fromDate == 0) {
             for (int a = 0; a < channels.size(); a++) {
-                final TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogs_dict.get(channels.get(a));
+                final MessagesController controller = MessagesController.getInstance(currentAccount);
+                final TLRPC.Dialog dialog = controller.dialogs_dict.get(channels.get(a));
                 if (dialog != null && dialog.unread_count > 0) {
-                    readInboxMax.put(dialog.id, dialog.read_inbox_max_id);
+                    readInboxMax.put(dialog.id, getReadInboxMax(controller, dialog));
                 }
             }
         }
@@ -220,7 +227,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             try {
                 for (HashMap.Entry<Long, Integer> entry : readInboxMax.entrySet()) {
                     cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
-                        "SELECT MIN(date) FROM messages_v2 WHERE uid = %d AND mid > %d", entry.getKey(), entry.getValue()));
+                        "SELECT MIN(date) FROM messages_v2 WHERE uid = %d AND mid > %d AND out = 0",entry.getKey(), entry.getValue()));
                     if (cursor.next() && !cursor.isNull(0)) {
                         final int date = cursor.intValue(0);
                         if (date > 0 && (unreadDate == 0 || date < unreadDate)) {

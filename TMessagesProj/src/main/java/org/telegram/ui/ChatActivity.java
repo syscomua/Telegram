@@ -19816,7 +19816,11 @@ public class ChatActivity extends BaseFragment implements
             final MessageObject message = newestShown.valueAt(a);
             final int readId = message.getRealId();
             final TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
-            if (dialog == null || dialog.unread_count == 0 && !dialog.unread_mark || readId <= dialog.read_inbox_max_id) {
+            if (dialog == null) {
+                continue;
+            }
+            final int readInboxMax = FavoriteFeedSource.getReadInboxMax(getMessagesController(), dialog);
+            if (dialog.unread_count == 0 && !dialog.unread_mark || readId <= readInboxMax) {
                 continue;
             }
             final Integer done = feedReadUpTo.get(dialogId);
@@ -19827,7 +19831,7 @@ public class ChatActivity extends BaseFragment implements
             int counterDecrement = 0;
             for (int b = 0; b < messages.size(); b++) {
                 final MessageObject m = messages.get(b);
-                if (m.getDialogId() == dialogId && m.getRealId() > dialog.read_inbox_max_id && m.getRealId() <= readId) {
+                if (m.getDialogId() == dialogId && !m.isOut() && m.getRealId() > readInboxMax && m.getRealId() <= readId) {
                     counterDecrement++;
                 }
             }
