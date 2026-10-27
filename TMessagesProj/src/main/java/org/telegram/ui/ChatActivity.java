@@ -19170,7 +19170,9 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void checkActionBarMenu(boolean animated) {
-        if (currentEncryptedChat != null && !(currentEncryptedChat instanceof TLRPC.TL_encryptedChat) ||
+        // the feed has no chat of its own: no auto-delete timer, its cutout left a hole in the avatar
+        if (isFavoriteFeed() ||
+                currentEncryptedChat != null && !(currentEncryptedChat instanceof TLRPC.TL_encryptedChat) ||
                 currentChat != null && (chatMode != 0 || threadMessageId != 0 || chatInfo == null || chatInfo.ttl_period == 0) ||
                 currentUser != null && (UserObject.isDeleted(currentUser) || currentEncryptedChat == null && (userInfo == null || userInfo.ttl_period == 0))) {
             if (timeItem2 != null) {
