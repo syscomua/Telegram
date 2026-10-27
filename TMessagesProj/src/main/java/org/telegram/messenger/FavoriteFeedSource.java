@@ -94,6 +94,13 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         return result;
     }
 
+    /** Date of the earliest unread post of the favorite channels found locally, 0 if none. */
+    private int firstUnreadDate;
+
+    public int getFirstUnreadDate() {
+        return firstUnreadDate;
+    }
+
     private static String key(long dialogId, int mid) {
         return dialogId + "_" + mid;
     }
@@ -128,6 +135,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         nextId = Integer.MAX_VALUE / 2;
         nextNewId = nextId + 1;
         idsByKey.clear();
+        firstUnreadDate = 0;
         oldestLocal.clear();
         oldestLocalLoaded = false;
         exhausted.clear();
@@ -187,6 +195,16 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         final int fromDate = cursorDate;
         final int fromMid = cursorMid;
         final boolean needOldest = !oldestLocalLoaded;
+        // for the first page: where each channel with unread posts stops being read
+        final HashMap<Long, Integer> readInboxMax = new HashMap<>();
+        if (fromDate == 0) {
+            for (int a = 0; a < channels.size(); a++) {
+                final TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogs_dict.get(channels.get(a));
+                if (dialog != null && dialog.unread_count > 0) {
+                    readInboxMax.put(dialog.id, dialog.read_inbox_max_id);
+                }
+            }
+        }
         final long clientUserId = UserConfig.getInstance(currentAccount).getClientUserId();
         final MessagesStorage storage = MessagesStorage.getInstance(currentAccount);
         storage.getStorageQueue().postRunnable(() -> {
@@ -197,8 +215,21 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             int rowsRead = 0;
             int lastDate = fromDate;
             int lastMid = fromMid;
+            int unreadDate = 0;
             SQLiteCursor cursor = null;
             try {
+                for (HashMap.Entry<Long, Integer> entry : readInboxMax.entrySet()) {
+                    cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
+                        "SELECT MIN(date) FROM messages_v2 WHERE uid = %d AND mid > %d", entry.getKey(), entry.getValue()));
+                    if (cursor.next() && !cursor.isNull(0)) {
+                        final int date = cursor.intValue(0);
+                        if (date > 0 && (unreadDate == 0 || date < unreadDate)) {
+                            unreadDate = date;
+                        }
+                    }
+                    cursor.dispose();
+                    cursor = null;
+                }
                 if (needOldest) {
                     cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
                         "SELECT uid, MIN(date), MIN(mid) FROM messages_v2 WHERE uid IN (%s) GROUP BY uid", ids));
@@ -248,9 +279,13 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             final boolean dbEnd = rowsRead < PAGE_SIZE;
             final int pageDate = lastDate;
             final int pageMid = lastMid;
+            final int firstUnread = unreadDate;
             AndroidUtilities.runOnUIThread(() -> {
                 if (gen != generation) {
                     return;
+                }
+                if (fromDate == 0) {
+                    firstUnreadDate = firstUnread;
                 }
                 MessagesController.getInstance(currentAccount).putUsers(users, true);
                 MessagesController.getInstance(currentAccount).putChats(chats, true);

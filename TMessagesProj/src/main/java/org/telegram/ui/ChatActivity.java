@@ -19735,13 +19735,38 @@ public class ChatActivity extends BaseFragment implements
 
     private int feedJumpDate;
     private final LongSparseArray<Integer> feedReadUpTo = new LongSparseArray<>();
+    /** The feed opens at its first unread post, as a channel does; until then nothing is marked read. */
+    private boolean feedPositioned;
+    private boolean feedPositioning;
+
+    private void positionFeedAtFirstUnread() {
+        if (feedPositioned || feedPositioning) {
+            return;
+        }
+        final int date = FavoriteFeedSource.getInstance(currentAccount).getFirstUnreadDate();
+        if (date == 0) {
+            feedPositioned = true;
+            return;
+        }
+        feedPositioning = true;
+        feedJumpDate = date;
+        continueFeedJump();
+    }
+
+    private void onFeedJumpDone() {
+        if (feedPositioning) {
+            feedPositioning = false;
+            // after the scroll to the first unread post has settled
+            AndroidUtilities.runOnUIThread(() -> feedPositioned = true, 600);
+        }
+    }
 
     /**
      * The feed has no dialog of its own: each channel is marked read up to its newest post
      * that has been on screen, with its real message id, as scrolling that channel would.
      */
     private void markFeedVisibleAsRead() {
-        if (chatListView == null) {
+        if (chatListView == null || !feedPositioned) {
             return;
         }
         final LongSparseArray<MessageObject> newestShown = new LongSparseArray<>();
@@ -19785,13 +19810,19 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void continueFeedJump() {
-        if (feedJumpDate == 0 || messages.isEmpty()) {
+        if (feedJumpDate == 0) {
+            return;
+        }
+        if (messages.isEmpty()) {
+            feedJumpDate = 0;
+            onFeedJumpDone();
             return;
         }
         if (messages.get(messages.size() - 1).messageOwner.date <= feedJumpDate || endReached[0]) {
             final int date = feedJumpDate;
             feedJumpDate = 0;
             jumpToDate(date);
+            onFeedJumpDone();
         } else if (!loading) {
             loading = true;
             waitingForLoad.add(lastLoadIndex);
@@ -24903,6 +24934,9 @@ public class ChatActivity extends BaseFragment implements
             }
             if (feedJumpDate != 0) {
                 AndroidUtilities.runOnUIThread(this::continueFeedJump);
+            }
+            if (isFavoriteFeed() && !feedPositioned) {
+                AndroidUtilities.runOnUIThread(this::positionFeedAtFirstUnread);
             }
         } else if (id == NotificationCenter.factCheckLoaded) {
             updateVisibleRows(msg -> msg != null && msg.getFactCheck() != null);
