@@ -1720,6 +1720,12 @@ public class ChatActivity extends BaseFragment implements
             if (isTryingTextSelection() || hasTextSelection() || inPreviewMode || isInsideContainer) {
                 return false;
             }
+            if (isFavoriteFeed()) {
+                // no multiselect: its checkboxes shift the posts aside; the tap's menu has Forward
+                wasManualScroll = true;
+                createMenu(view, true, false, x, y, false);
+                return true;
+            }
             wasManualScroll = true;
             boolean result = true;
             boolean showMenu = true;
