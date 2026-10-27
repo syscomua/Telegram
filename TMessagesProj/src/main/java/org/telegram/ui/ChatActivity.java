@@ -16774,6 +16774,9 @@ public class ChatActivity extends BaseFragment implements
         }
         updateFloatingTopicView();
         invalidateChatListViewTopPadding();
+        if (isFavoriteFeed() && !firstLoading && !paused && !inPreviewMode) {
+            markFeedVisibleAsRead();
+        }
         if (!firstLoading && !paused && !inPreviewMode && (chatMode == 0 || chatMode == MODE_SUGGESTIONS) && !getMessagesController().ignoreSetOnline) {
             int scheduledRead = 0;
             if ((maxPositiveUnreadId != Integer.MIN_VALUE || maxNegativeUnreadId != Integer.MAX_VALUE)) {
@@ -19731,6 +19734,55 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private int feedJumpDate;
+    private final LongSparseArray<Integer> feedReadUpTo = new LongSparseArray<>();
+
+    /**
+     * The feed has no dialog of its own: each channel is marked read up to its newest post
+     * that has been on screen, with its real message id, as scrolling that channel would.
+     */
+    private void markFeedVisibleAsRead() {
+        if (chatListView == null) {
+            return;
+        }
+        final LongSparseArray<MessageObject> newestShown = new LongSparseArray<>();
+        final int listBottom = chatListView.getMeasuredHeight() - chatListView.getPaddingBottom();
+        for (int a = 0; a < chatListView.getChildCount(); a++) {
+            final View child = chatListView.getChildAt(a);
+            if (!(child instanceof ChatMessageCell) || child.getTop() >= listBottom || child.getBottom() <= chatListView.getPaddingTop()) {
+                continue;
+            }
+            final MessageObject message = ((ChatMessageCell) child).getMessageObject();
+            if (message == null || message.isOut() || message.getRealId() <= 0) {
+                continue;
+            }
+            final MessageObject current = newestShown.get(message.getDialogId());
+            if (current == null || message.getRealId() > current.getRealId()) {
+                newestShown.put(message.getDialogId(), message);
+            }
+        }
+        for (int a = 0; a < newestShown.size(); a++) {
+            final long dialogId = newestShown.keyAt(a);
+            final MessageObject message = newestShown.valueAt(a);
+            final int readId = message.getRealId();
+            final TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
+            if (dialog == null || dialog.unread_count == 0 && !dialog.unread_mark || readId <= dialog.read_inbox_max_id) {
+                continue;
+            }
+            final Integer done = feedReadUpTo.get(dialogId);
+            if (done != null && done >= readId) {
+                continue;
+            }
+            feedReadUpTo.put(dialogId, readId);
+            int counterDecrement = 0;
+            for (int b = 0; b < messages.size(); b++) {
+                final MessageObject m = messages.get(b);
+                if (m.getDialogId() == dialogId && m.getRealId() > dialog.read_inbox_max_id && m.getRealId() <= readId) {
+                    counterDecrement++;
+                }
+            }
+            getMessagesController().markDialogAsRead(dialogId, readId, readId, message.messageOwner.date, false, 0, Math.max(1, counterDecrement), readId >= dialog.top_message, 0);
+        }
+    }
 
     private void continueFeedJump() {
         if (feedJumpDate == 0 || messages.isEmpty()) {
