@@ -19766,7 +19766,11 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     protected boolean isNeedAuthorName() {
-        if (currentMessageObject.forceAvatar || currentMessageObject.isFavoriteFeedPost || currentMessageObject.getDialogId() == UserObject.VERIFY && currentMessageObject.messageOwner != null && currentMessageObject.messageOwner.fwd_from != null) {
+        if (currentMessageObject.isFavoriteFeedPost) {
+            // no bubble for stickers and round videos: the channel avatar names the post
+            return !currentMessageObject.isAnyKindOfSticker() && currentMessageObject.type != MessageObject.TYPE_ROUND_VIDEO;
+        }
+        if (currentMessageObject.forceAvatar || currentMessageObject.getDialogId() == UserObject.VERIFY && currentMessageObject.messageOwner != null && currentMessageObject.messageOwner.fwd_from != null) {
             return true;
         }
         if (currentMessageObject.isSponsored()) {
