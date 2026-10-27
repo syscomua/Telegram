@@ -2509,7 +2509,8 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 if (newMsg.message == null) {
                     newMsg.message = "";
                 }
-                newMsg.fwd_msg_id = msgObj.getId();
+                // a favorite feed post carries its own id, the channel knows the real one
+                newMsg.fwd_msg_id = msgObj.getRealId();
                 newMsg.attachPath = msgObj.messageOwner.attachPath;
                 newMsg.entities = msgObj.messageOwner.entities;
                 if (msgObj.messageOwner.reply_markup instanceof TLRPC.TL_replyInlineMarkup) {
