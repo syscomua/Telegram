@@ -183,15 +183,11 @@ public class LocalGroupsController extends BaseController {
         return 0;
     }
 
-    /** groupId 0 takes the chats out of their groups */
+    /** groupId 0 takes the chats out of their groups, a bot then stays out of the bots group too */
     public void setGroup(ArrayList<Long> dids, int groupId) {
         ensureLoaded();
         for (long did : dids) {
-            if (groupId == 0) {
-                members.remove(did);
-            } else {
-                members.put(did, groupId);
-            }
+            members.put(did, groupId);
         }
         onChanged();
     }
