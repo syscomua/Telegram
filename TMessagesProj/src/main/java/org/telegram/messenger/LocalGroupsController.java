@@ -45,8 +45,6 @@ public class LocalGroupsController extends BaseController {
     public static class Group {
         public int id;
         public String title;
-        /** every bot without a group of its own lands here */
-        public boolean bots;
     }
 
     private ArrayList<Group> groups = new ArrayList<>();
@@ -73,10 +71,10 @@ public class LocalGroupsController extends BaseController {
         rows.clear();
         final String json = getPrefs().getString("groups_" + userId, null);
         if (json == null) {
-            addDefault(LocaleController.getString(R.string.LocalGroupFamily), false);
-            addDefault(LocaleController.getString(R.string.LocalGroupFriends), false);
-            addDefault(LocaleController.getString(R.string.LocalGroupWork), false);
-            addDefault(LocaleController.getString(R.string.LocalGroupBots), true);
+            addDefault(LocaleController.getString(R.string.LocalGroupFamily));
+            addDefault(LocaleController.getString(R.string.LocalGroupFriends));
+            addDefault(LocaleController.getString(R.string.LocalGroupWork));
+            addDefault(LocaleController.getString(R.string.LocalGroupBots));
             return;
         }
         try {
@@ -87,7 +85,6 @@ public class LocalGroupsController extends BaseController {
                 final Group group = new Group();
                 group.id = o.getInt("id");
                 group.title = o.getString("title");
-                group.bots = o.optBoolean("bots");
                 groups.add(group);
             }
             final JSONObject map = root.getJSONObject("members");
@@ -100,11 +97,10 @@ public class LocalGroupsController extends BaseController {
         }
     }
 
-    private void addDefault(String title, boolean bots) {
+    private void addDefault(String title) {
         final Group group = new Group();
         group.id = groups.size() + 1;
         group.title = title;
-        group.bots = bots;
         groups.add(group);
     }
 
@@ -115,9 +111,6 @@ public class LocalGroupsController extends BaseController {
                 final JSONObject o = new JSONObject();
                 o.put("id", group.id);
                 o.put("title", group.title);
-                if (group.bots) {
-                    o.put("bots", true);
-                }
                 list.put(o);
             }
             final JSONObject map = new JSONObject();
@@ -167,27 +160,18 @@ public class LocalGroupsController extends BaseController {
     public int getGroupOf(long did) {
         ensureLoaded();
         final Integer groupId = members.get(did);
-        if (groupId != null) {
-            return groupId;
-        }
-        if (did > 0) {
-            final TLRPC.User user = getMessagesController().getUser(did);
-            if (user != null && user.bot) {
-                for (Group group : groups) {
-                    if (group.bots) {
-                        return group.id;
-                    }
-                }
-            }
-        }
-        return 0;
+        return groupId != null ? groupId : 0;
     }
 
-    /** groupId 0 takes the chats out of their groups, a bot then stays out of the bots group too */
+    /** groupId 0 takes the chats out of their groups */
     public void setGroup(ArrayList<Long> dids, int groupId) {
         ensureLoaded();
         for (long did : dids) {
-            members.put(did, groupId);
+            if (groupId == 0) {
+                members.remove(did);
+            } else {
+                members.put(did, groupId);
+            }
         }
         onChanged();
     }

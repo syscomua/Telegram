@@ -37,7 +37,7 @@ public class LocalGroupsUi {
         final int[] icons = new int[n + 2];
         for (int i = 0; i < n; i++) {
             items[i] = groups.get(i).title;
-            icons[i] = groups.get(i).bots ? R.drawable.msg_folders_bots : R.drawable.msg_folders;
+            icons[i] = R.drawable.msg_folders;
         }
         items[n] = getString(R.string.LocalGroupNew);
         icons[n] = R.drawable.msg_addfolder;
