@@ -9951,7 +9951,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
         FavoriteFeedUi.updateSelectionItem(favoriteFeedItem, currentAccount, selectedDialogs);
         // archived chats live in the server folder, a local group would not take them
-        localGroupItem.setVisibility(folderId == 1 ? View.GONE : View.VISIBLE);
+        if (localGroupItem != null) {
+            localGroupItem.setVisibility(folderId == 1 ? View.GONE : View.VISIBLE);
+        }
         if (removeFromFolderItem != null) {
             boolean cantRemoveFromFolder = filterTabsView == null || filterTabsView.getVisibility() != View.VISIBLE || filterTabsView.currentTabIsDefault();
             if (!cantRemoveFromFolder) {
