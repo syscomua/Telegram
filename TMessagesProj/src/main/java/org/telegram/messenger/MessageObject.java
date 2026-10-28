@@ -1709,7 +1709,8 @@ public class MessageObject {
                     }
                 }
                 MessageObject messageObject = messages.get(a);
-                if (!isOut && messageObject.needDrawAvatarInternal()) {
+                // a feed post has the channel avatar too, the cell takes its width off the album
+                if (!isOut && (messageObject.needDrawAvatarInternal() || messageObject.isFavoriteFeedPost)) {
                     if (pos.edge) {
                         if (pos.spanSize != 1000) {
                             pos.spanSize += avatarOffset;

@@ -19767,8 +19767,10 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
 
     protected boolean isNeedAuthorName() {
         if (currentMessageObject.isFavoriteFeedPost) {
-            // no bubble for stickers and round videos: the channel avatar names the post
-            return !currentMessageObject.isAnyKindOfSticker() && currentMessageObject.type != MessageObject.TYPE_ROUND_VIDEO;
+            // no bubble for stickers and round videos: the channel avatar names the post;
+            // in an album only the top row has the name, the others would keep an empty line for it
+            return !currentMessageObject.isAnyKindOfSticker() && currentMessageObject.type != MessageObject.TYPE_ROUND_VIDEO
+                && (currentPosition == null || (currentPosition.flags & MessageObject.POSITION_FLAG_TOP) != 0);
         }
         if (currentMessageObject.forceAvatar || currentMessageObject.getDialogId() == UserObject.VERIFY && currentMessageObject.messageOwner != null && currentMessageObject.messageOwner.fwd_from != null) {
             return true;
