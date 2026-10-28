@@ -20,6 +20,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.ChatObject;
+import org.telegram.messenger.ForkUiSettings;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.FileLoader;
@@ -553,6 +554,10 @@ public class StoriesController {
     }
 
     public void preloadUserStories(TL_stories.PeerStories userStories) {
+        // this preload is for the stories bar of the chat list; a hidden bar needs none
+        if (!ForkUiSettings.isStoriesBarShown()) {
+            return;
+        }
         int preloadPosition = 0;
         for (int i = 0; i < userStories.stories.size(); i++) {
             if (userStories.stories.get(i).id > userStories.max_read_id) {

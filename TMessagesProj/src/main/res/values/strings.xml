@@ -11656,6 +11656,8 @@
     <string name="LocalGroupTitleHint">Group name</string>
     <string name="LocalGroupAddBots">Add all bots</string>
     <string name="LocalGroupBotsAdded">Bots moved to **%2$s**: %1$d</string>
+    <string name="ChatListStoriesBar">Stories bar</string>
+    <string name="ChatListStoriesBarInfo">Stories above the chat list. When it is off, stories are not preloaded in the background either.</string>
     <string name="ChatListStoryButton">“Post a story” button</string>
     <string name="ChatListComposeButton">“New message” button</string>
     <string name="FavoriteFeedChannels_one">%1$d channel</string>

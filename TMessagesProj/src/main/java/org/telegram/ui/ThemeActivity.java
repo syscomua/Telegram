@@ -202,6 +202,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int bubbleRadiusInfoRow;
     private int chatListHeaderRow;
     private int chatListRow;
+    private int storiesBarRow;
     private int storyButtonRow;
     private int composeButtonRow;
     private int chatListInfoRow;
@@ -567,6 +568,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         bubbleRadiusInfoRow = -1;
         chatListHeaderRow = -1;
         chatListRow = -1;
+        storiesBarRow = -1;
         storyButtonRow = -1;
         composeButtonRow = -1;
         chatListInfoRow = -1;
@@ -674,6 +676,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
 
             chatListHeaderRow = rowCount++;
             chatListRow = rowCount++;
+            storiesBarRow = rowCount++;
             storyButtonRow = rowCount++;
             composeButtonRow = rowCount++;
             chatListInfoRow = rowCount++;
@@ -1317,6 +1320,11 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         .create();
                 dialogRef.set(dialog);
                 showDialog(dialog);
+            } else if (position == storiesBarRow) {
+                ForkUiSettings.setStoriesBarShown(!ForkUiSettings.isStoriesBarShown());
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(ForkUiSettings.isStoriesBarShown());
+                }
             } else if (position == storyButtonRow) {
                 ForkUiSettings.setStoryButtonShown(!ForkUiSettings.isStoryButtonShown());
                 if (view instanceof TextCheckCell) {
@@ -2631,6 +2639,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         textCheckCell.setTextAndValueAndCheck(getString(R.string.PauseMusicOnRecord), getString("PauseMusicOnRecordInfo", R.string.PauseMusicOnRecordInfo), SharedConfig.pauseMusicOnRecord, true, true);
                     } else if (position == pauseOnMediaRow) {
                         textCheckCell.setTextAndCheck(getString(R.string.PauseMusicOnMedia), SharedConfig.pauseMusicOnMedia, true);
+                    } else if (position == storiesBarRow) {
+                        textCheckCell.setTextAndValueAndCheck(getString(R.string.ChatListStoriesBar), getString(R.string.ChatListStoriesBarInfo), ForkUiSettings.isStoriesBarShown(), true, true);
                     } else if (position == storyButtonRow) {
                         textCheckCell.setTextAndCheck(getString(R.string.ChatListStoryButton), ForkUiSettings.isStoryButtonShown(), true);
                     } else if (position == composeButtonRow) {
@@ -2775,7 +2785,7 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
             } else if (position == scheduleLocationRow || position == sendByEnterRow ||
                     position == raiseToSpeakRow || position == raiseToListenRow || position == pauseOnRecordRow ||
                     position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow ||
-                    position == storyButtonRow || position == composeButtonRow) {
+                    position == storiesBarRow || position == storyButtonRow || position == composeButtonRow) {
                 return TYPE_TEXT_CHECK;
             } else if (position == textSizeRow) {
                 return TYPE_TEXT_SIZE;

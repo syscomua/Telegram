@@ -7039,9 +7039,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onResume() {
         super.onResume();
-        // the buttons may have been switched off in chat settings meanwhile
+        // the buttons and the stories bar may have been switched off in chat settings meanwhile
         updateFloatingButtonVisibility(false);
         updateFloatingButtonOffset();
+        updateStoriesVisibility(false);
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -12847,6 +12848,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         } else {
             newVisibility = !onlySelfStories && getStoriesController().hasStories();
             onlySelfStories = getStoriesController().hasOnlySelfStories();
+        }
+
+        // switched off in chat settings: as if nobody had stories
+        if (!isArchive() && communityId == 0 && !ForkUiSettings.isStoriesBarShown()) {
+            newVisibility = false;
+            onlySelfStories = false;
         }
 
         hasOnlySlefStories = onlySelfStories;

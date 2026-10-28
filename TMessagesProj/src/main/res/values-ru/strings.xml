@@ -293,6 +293,8 @@
     <string name="LocalGroupTitleHint">Название группы</string>
     <string name="LocalGroupAddBots">Добавить всех ботов</string>
     <string name="LocalGroupBotsAdded">Ботов перенесено в **%2$s**: %1$d</string>
+    <string name="ChatListStoriesBar">Панель историй</string>
+    <string name="ChatListStoriesBarInfo">Истории над списком чатов. Если выключить, истории не будут и загружаться фоном.</string>
     <string name="ChatListStoryButton">Кнопка «Опубликовать историю»</string>
     <string name="ChatListComposeButton">Кнопка «Новое сообщение»</string>
     <string name="FavoriteFeedChannels_one">%1$d канал</string>

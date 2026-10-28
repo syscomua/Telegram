@@ -12,6 +12,15 @@ public class ForkUiSettings {
         return ApplicationLoader.applicationContext.getSharedPreferences("fork_ui", Activity.MODE_PRIVATE);
     }
 
+    /** Stories bar above the chat list; when it is off, stories are not preloaded for it either. */
+    public static boolean isStoriesBarShown() {
+        return getPrefs().getBoolean("stories_bar", true);
+    }
+
+    public static void setStoriesBarShown(boolean shown) {
+        getPrefs().edit().putBoolean("stories_bar", shown).apply();
+    }
+
     /** "Post a story" camera button above the compose one. */
     public static boolean isStoryButtonShown() {
         return getPrefs().getBoolean("story_button", true);
