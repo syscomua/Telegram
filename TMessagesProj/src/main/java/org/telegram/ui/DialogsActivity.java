@@ -114,6 +114,7 @@ import org.telegram.messenger.ImageLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LiteMode;
+import org.telegram.messenger.LocalGroupsController;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaController;
 import org.telegram.messenger.MediaDataController;
@@ -582,6 +583,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Nullable
     private ActionBarMenuSubItem addToFolderItem;
     private ActionBarMenuSubItem favoriteFeedItem;
+    private ActionBarMenuSubItem localGroupItem;
     @Nullable
     private ActionBarMenuSubItem removeFromFolderItem;
     @Nullable
@@ -714,6 +716,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     private final static int remove_from_folder = 110;
     private final static int community_ungroup = 111;
     private final static int favorite_feed = 112;
+    private final static int local_group = 113;
 
     private final static int ARCHIVE_ITEM_STATE_PINNED = 0;
     private final static int ARCHIVE_ITEM_STATE_SHOWED = 1;
@@ -2440,6 +2443,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                     swipeFolderBack = false;
                     return makeMovementFlags(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0);
                 } else {
+                    // swipe actions are made for the archive and the main list, not for local groups
+                    if (LocalGroupsController.isGroupFolder(folderId) || LocalGroupsController.getInstance(currentAccount).getRow(dialogId) != null) {
+                        return 0;
+                    }
                     int currentDialogsType = initialDialogsType;
                     try {
                         currentDialogsType = parentPage.dialogsAdapter.getDialogsType();
@@ -3504,7 +3511,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 actionBar.setBackButtonDrawable(backDrawable = new BackDrawable(false));
             }
             if (folderId != 0) {
-                actionBar.setTitle(getString(R.string.ArchivedChats));
+                actionBar.setTitle(LocalGroupsController.isGroupFolder(folderId) ? LocalGroupsController.getInstance(currentAccount).getTitle(folderId) : getString(R.string.ArchivedChats));
             } else if (communityId != 0) {
                 actionBar.setTitle(DialogObject.getName(community));
                 actionBar.setAdditionalTextLeft(dp(28));
@@ -4011,6 +4018,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                         undoView.showWithAction(did, UndoView.ACTION_REMOVED_FROM_FOLDER, neverShow.size(), filter, null, null);
                     }
                     hideActionMode(false);
+                } else if (id == local_group) {
+                    LocalGroupsUi.showMoveMenu(DialogsActivity.this, new ArrayList<>(selectedDialogs));
+                    hideActionMode(true);
                 } else if (id == favorite_feed) {
                     FavoriteFeedUi.toggleSelected(DialogsActivity.this, new ArrayList<>(selectedDialogs));
                     hideActionMode(true);
@@ -6755,6 +6765,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         removeFromFolderItem = otherItem.addSubItem(remove_from_folder, R.drawable.msg_removefolder, LocaleController.getString(R.string.FilterRemoveFrom));
         readItem = otherItem.addSubItem(read, R.drawable.msg_markread, LocaleController.getString(R.string.MarkAsRead));
         favoriteFeedItem = otherItem.addSubItem(favorite_feed, FavoriteFeedUi.getToggleIcon(false), FavoriteFeedUi.getToggleText(false));
+        localGroupItem = otherItem.addSubItem(local_group, R.drawable.msg_folders, LocaleController.getString(R.string.LocalGroupMoveTo));
         clearItem = otherItem.addSubItem(clear, R.drawable.msg_clear, LocaleController.getString(R.string.ClearHistory));
         blockItem = otherItem.addSubItem(block, R.drawable.msg_block, LocaleController.getString(R.string.BlockUser));
 
@@ -8406,6 +8417,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             updateSelectedCount();
             return true;
         } else {
+            if (dialog instanceof TLRPC.TL_dialogFolder && LocalGroupsController.isGroupFolder(((TLRPC.TL_dialogFolder) dialog).folder.id)) {
+                LocalGroupsUi.showGroupMenu(this, view, ((TLRPC.TL_dialogFolder) dialog).folder.id);
+                return false;
+            }
             if (dialog instanceof TLRPC.TL_dialogFolder) {
                 onArchiveLongPress(view);
                 return false;
@@ -9935,6 +9950,8 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
         }
         FavoriteFeedUi.updateSelectionItem(favoriteFeedItem, currentAccount, selectedDialogs);
+        // archived chats live in the server folder, a local group would not take them
+        localGroupItem.setVisibility(folderId == 1 ? View.GONE : View.VISIBLE);
         if (removeFromFolderItem != null) {
             boolean cantRemoveFromFolder = filterTabsView == null || filterTabsView.getVisibility() != View.VISIBLE || filterTabsView.currentTabIsDefault();
             if (!cantRemoveFromFolder) {

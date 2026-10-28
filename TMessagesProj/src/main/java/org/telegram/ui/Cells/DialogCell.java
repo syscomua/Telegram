@@ -70,6 +70,7 @@ import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.DownloadController;
 import org.telegram.messenger.Emoji;
 import org.telegram.messenger.FavoriteChannelsController;
+import org.telegram.messenger.LocalGroupsController;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
 import org.telegram.messenger.ImageLocation;
@@ -762,7 +763,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         if (dialog instanceof TLRPC.TL_dialogFolder) {
             TLRPC.TL_dialogFolder dialogFolder = (TLRPC.TL_dialogFolder) dialog;
             currentDialogFolderId = dialogFolder.folder.id;
-            if (archivedChatsDrawable != null) {
+            if (archivedChatsDrawable != null && currentDialogFolderId == 1) {
                 archivedChatsDrawable.setCell(this);
             }
         } else {
@@ -2196,6 +2197,8 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
             if (titleOverride != null) {
                 nameString = titleOverride;
+            } else if (LocalGroupsController.isGroupFolder(currentDialogFolderId)) {
+                nameString = LocalGroupsController.getInstance(currentAccount).getTitle(currentDialogFolderId);
             } else if (currentDialogFolderId != 0) {
                 nameString = getString(R.string.ArchivedChats);
             } else {
@@ -3227,6 +3230,12 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         return currentDialogFolderId != 0;
     }
 
+    private TLRPC.Dialog findCurrentDialog() {
+        final TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogs_dict.get(currentDialogId);
+        // rows of local groups live outside the dialog map
+        return dialog != null ? dialog : LocalGroupsController.getInstance(currentAccount).getRow(currentDialogId);
+    }
+
     public boolean update(int mask) {
         return update(mask, true);
     }
@@ -3269,7 +3278,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
             hasUnmutedCommunityDialogs = false;
             readOutboxMaxId = -1;
             if (isDialogCell) {
-                TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogs_dict.get(currentDialogId);
+                TLRPC.Dialog dialog = findCurrentDialog();
                 if (dialog != null) {
                     readOutboxMaxId = dialog.read_outbox_max_id;
                     ttlPeriod = dialog.ttl_period;
@@ -3288,7 +3297,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                             hasUnmutedTopics = counts[3] != 0;
                             pollVotesMentionCount = counts[4];
                         } else if (dialog instanceof TLRPC.TL_dialogFolder) {
-                            unreadCount = MessagesStorage.getInstance(currentAccount).getArchiveUnreadCount();
+                            unreadCount = LocalGroupsController.isGroupFolder(currentDialogFolderId) ? dialog.unread_count : MessagesStorage.getInstance(currentAccount).getArchiveUnreadCount();
                             mentionCount = 0;
                             reactionMentionCount = 0;
                             pollVotesMentionCount = 0;
@@ -3453,7 +3462,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                         continueUpdate = true;
                     }
                     if (isDialogCell) {
-                        TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogs_dict.get(currentDialogId);
+                        TLRPC.Dialog dialog = findCurrentDialog();
                         int newCount;
                         int newMentionCount;
                         int newReactionCout = 0;
@@ -3468,7 +3477,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                             hasUnmutedTopics = counts[3] != 0;
                             newPollVotesCount = counts[4];
                         } else if (dialog instanceof TLRPC.TL_dialogFolder) {
-                            newCount = MessagesStorage.getInstance(currentAccount).getArchiveUnreadCount();
+                            newCount = LocalGroupsController.isGroupFolder(currentDialogFolderId) ? dialog.unread_count : MessagesStorage.getInstance(currentAccount).getArchiveUnreadCount();
                             newMentionCount = 0;
                         } else if (dialog instanceof TLRPC.TL_dialogCommunity) {
                             MessagesController.UnreadCounts unreadCounts = MessagesController.getInstance(currentAccount).getCommunityUnreadCount(-dialog.id);
@@ -3576,7 +3585,10 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
             drawCommunityAvatar = !insideCommunityList && ChatObject.isCommunity(chat) && isDialogCell;
 
-            if (currentDialogFolderId != 0) {
+            if (LocalGroupsController.isGroupFolder(currentDialogFolderId)) {
+                avatarDrawable.setInfo(currentDialogFolderId, LocalGroupsController.getInstance(currentAccount).getTitle(currentDialogFolderId), null);
+                avatarImage.setImage(null, null, avatarDrawable, null, null, 0);
+            } else if (currentDialogFolderId != 0) {
                 Theme.dialogs_archiveAvatarDrawable.setCallback(this);
                 avatarDrawable.setAvatarType(AvatarDrawable.AVATAR_TYPE_ARCHIVED);
                 avatarImage.setImage(null, null, avatarDrawable, null, user, 0);
@@ -3792,7 +3804,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     }
 
     public boolean isDrawArchive() {
-        return drawArchive && (currentDialogFolderId != 0 || isTopic && forumTopic != null && forumTopic.id == 1) && translationX == 0 && archivedChatsDrawable != null;
+        return drawArchive && (currentDialogFolderId == 1 || isTopic && forumTopic != null && forumTopic.id == 1) && translationX == 0 && archivedChatsDrawable != null;
     }
 
     private GradientDrawable archiveFadeGradientDrawable;
@@ -3810,7 +3822,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
         boolean needInvalidate = false;
 
-        if (drawArchive && (currentDialogFolderId != 0 || isTopic && forumTopic != null && forumTopic.id == 1) && archivedChatsDrawable != null && archivedChatsDrawable.outProgress == 0.0f && translationX == 0.0f) {
+        if (drawArchive && (currentDialogFolderId == 1 || isTopic && forumTopic != null && forumTopic.id == 1) && archivedChatsDrawable != null && archivedChatsDrawable.outProgress == 0.0f && translationX == 0.0f) {
             canvas.save();
             canvas.translate(0, -translateY - rightFragmentOffset);
             canvas.clipRect(0, getMeasuredHeight() * (1f - archivedChatsDrawable.getPullProgress()), getMeasuredWidth(), getMeasuredHeight());
@@ -3824,7 +3836,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         float gtx = 0, gty = 0;
         boolean emojiStatusVisible = false;
 
-        final boolean clipArchive = drawArchive && (currentDialogFolderId != 0 || isTopic && forumTopic != null && forumTopic.id == 1) && archivedChatsDrawable != null && translationX == 0.0f && parentFragment != null && parentFragment.hasHiddenArchive()
+        final boolean clipArchive = drawArchive && (currentDialogFolderId == 1 || isTopic && forumTopic != null && forumTopic.id == 1) && archivedChatsDrawable != null && translationX == 0.0f && parentFragment != null && parentFragment.hasHiddenArchive()
             && (parentFragment.rightSlidingDialogContainer == null || !parentFragment.rightSlidingDialogContainer.hasFragment());
         final float archivePullProgress = archivedChatsDrawable != null ? archivedChatsDrawable.getPullProgress() : 1f;
         if (clipArchive) {
@@ -4814,7 +4826,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
         if (translationX != 0) {
             canvas.restore();
         }
-        if (drawArchive && (currentDialogFolderId != 0 || isTopic && forumTopic != null && forumTopic.id == 1) && translationX == 0 && archivedChatsDrawable != null) {
+        if (drawArchive && (currentDialogFolderId == 1 || isTopic && forumTopic != null && forumTopic.id == 1) && translationX == 0 && archivedChatsDrawable != null) {
             canvas.save();
             canvas.translate(0, -translateY - rightFragmentOffset * rightFragmentOpenedProgress);
             canvas.clipRect(0, getMeasuredHeight() * (1f - archivedChatsDrawable.getPullProgress()), getMeasuredWidth(), getMeasuredHeight());
@@ -4824,7 +4836,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
         if (useSeparator) {
             int left;
-            if (fullSeparator || currentDialogFolderId != 0 && archiveHidden && !fullSeparator2 || fullSeparator2 && !archiveHidden) {
+            if (fullSeparator || currentDialogFolderId == 1 && archiveHidden && !fullSeparator2 || fullSeparator2 && !archiveHidden) {
                 left = 0;
             } else {
                 left = dp(messagePaddingStart);
@@ -5306,7 +5318,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
                 fillPaintAlpha = drawCounterMuted ? 30 : 40;
                 restoreCountTextPaint = true;
             } else {
-                paint = drawCounterMuted || currentDialogFolderId != 0 ? Theme.dialogs_countGrayPaint : Theme.dialogs_countPaint;
+                paint = drawCounterMuted || currentDialogFolderId == 1 ? Theme.dialogs_countGrayPaint : Theme.dialogs_countPaint;
             }
 
             if (countOldLayout == null || unreadCount == 0) {
@@ -5526,7 +5538,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
     @Override
     public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
         super.onInitializeAccessibilityNodeInfo(info);
-        if (isFolderCell() && archivedChatsDrawable != null && SharedConfig.archiveHidden && archivedChatsDrawable.getPullProgress() == 0.0f) {
+        if (currentDialogFolderId == 1 && archivedChatsDrawable != null && SharedConfig.archiveHidden && archivedChatsDrawable.getPullProgress() == 0.0f) {
             info.setVisibleToUser(false);
         } else {
             info.addAction(AccessibilityNodeInfo.ACTION_CLICK);
@@ -6237,7 +6249,7 @@ public class DialogCell extends BaseCell implements StoriesListPlaceProvider.Ava
 
 
         public boolean update() {
-            TLRPC.Dialog dialog = MessagesController.getInstance(currentAccount).dialogs_dict.get(currentDialogId);
+            TLRPC.Dialog dialog = findCurrentDialog();
             if (dialog == null) {
                 if (dialogsType == DialogsActivity.DIALOGS_TYPE_FORWARD && lastDrawnDialogId != currentDialogId) {
                     lastDrawnDialogId = currentDialogId;

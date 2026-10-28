@@ -9656,14 +9656,24 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public boolean isDialogsEndReached(int folderId) {
+        // chats of a local group come from the main list
+        if (LocalGroupsController.isGroupFolder(folderId)) {
+            folderId = 0;
+        }
         return dialogsEndReached.get(folderId);
     }
 
     public boolean isLoadingDialogs(int folderId) {
+        if (LocalGroupsController.isGroupFolder(folderId)) {
+            folderId = 0;
+        }
         return loadingDialogs.get(folderId);
     }
 
     public boolean isServerDialogsEndReached(int folderId) {
+        if (LocalGroupsController.isGroupFolder(folderId)) {
+            folderId = 0;
+        }
         return serverDialogsEndReached.get(folderId);
     }
 
@@ -9944,7 +9954,18 @@ public class MessagesController extends BaseController implements NotificationCe
         if (dialogs != null) {
             dialogs.remove(dialog);
         }
+        removeDialogFromLocalGroup(dialog);
         removeDialogFromCommunityMap(dialog);
+    }
+
+    private void removeDialogFromLocalGroup(TLRPC.Dialog dialog) {
+        final int groupId = LocalGroupsController.getInstance(currentAccount).getGroupOf(dialog.id);
+        if (groupId != 0) {
+            ArrayList<TLRPC.Dialog> dialogs = dialogsByFolder.get(LocalGroupsController.FOLDER_BASE + groupId);
+            if (dialogs != null) {
+                dialogs.remove(dialog);
+            }
+        }
     }
 
     private void removeDialogFromCommunityMap(TLRPC.Dialog dialog) {
@@ -12459,7 +12480,9 @@ public class MessagesController extends BaseController implements NotificationCe
         loadDialogs(folderId, offset, count, fromCache, null);
     }
 
-    public void loadDialogs(final int folderId, int offset, int count, boolean fromCache, Runnable onEmptyCallback) {
+    public void loadDialogs(int requestedFolderId, int offset, int count, boolean fromCache, Runnable onEmptyCallback) {
+        // a local group fills up as the main list loads
+        final int folderId = LocalGroupsController.isGroupFolder(requestedFolderId) ? 0 : requestedFolderId;
         if (loadingDialogs.get(folderId) || resetingDialogs) {
             return;
         }
@@ -17206,6 +17229,10 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void reorderPinnedDialogs(int folderId, ArrayList<TLRPC.InputDialogPeer> order, long taskId) {
+        // a local group holds only a part of the pinned chats, its order would unpin the rest
+        if (LocalGroupsController.isGroupFolder(folderId)) {
+            return;
+        }
         TLRPC.TL_messages_reorderPinnedDialogs req = new TLRPC.TL_messages_reorderPinnedDialogs();
         req.folder_id = folderId;
         req.force = true;
@@ -17351,7 +17378,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadPinnedDialogs(final int folderId, long newDialogId, ArrayList<Long> order) {
-        if (loadingPinnedDialogs.indexOfKey(folderId) >= 0 || getUserConfig().isPinnedDialogsLoaded(folderId)) {
+        if (LocalGroupsController.isGroupFolder(folderId) || loadingPinnedDialogs.indexOfKey(folderId) >= 0 || getUserConfig().isPinnedDialogsLoaded(folderId)) {
             return;
         }
         loadingPinnedDialogs.put(folderId, 1);
@@ -22013,6 +22040,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (dialogs != null) {
                     dialogs.remove(dialog);
                 }
+                removeDialogFromLocalGroup(dialog);
                 removeDialogFromCommunityMap(dialog);
                 MessageObject object = dialogMessagesByIds.get(dialog.top_message);
                 if (object != null && object.messageOwner.peer_id.channel_id == 0) {
@@ -22560,6 +22588,7 @@ public class MessagesController extends BaseController implements NotificationCe
             allDialogs.add(0, promoDialog);
             addDialogToItsFolder(-2, promoDialog);
         }
+        LocalGroupsController.getInstance(currentAccount).collapseGroups(dialogsByFolder);
         if (!selfAdded) {
             TLRPC.User user = getUserConfig().getCurrentUser();
             if (user != null) {
