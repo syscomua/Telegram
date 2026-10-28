@@ -37,7 +37,7 @@ public class FavoriteChannelsController extends BaseController {
         return localInstance;
     }
 
-    private final FavoriteChannelsStore store = new PrefsFavoriteChannelsStore();
+    private final FavoriteChannelsStore store = new ForkFavoriteChannelsStore();
     private LinkedHashMap<Long, Integer> channels = new LinkedHashMap<>();
     private long loadedForUserId;
 
@@ -68,8 +68,6 @@ public class FavoriteChannelsController extends BaseController {
             return;
         }
         channels.put(did, ConnectionsManager.getInstance(currentAccount).getCurrentTime());
-        // adding a channel brings a hidden feed row back
-        getSettings().edit().remove("hidden_" + loadedForUserId).apply();
         onChanged();
     }
 

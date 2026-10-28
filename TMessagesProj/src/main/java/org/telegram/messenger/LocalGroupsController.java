@@ -1,21 +1,20 @@
 package org.telegram.messenger;
 
-import android.app.Activity;
-import android.content.SharedPreferences;
 import android.util.SparseArray;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.telegram.tgnet.TLRPC;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 
 /**
  * Chat groups kept on this device: each one collapses its chats into a single row of the chat list,
  * the way the archive does. A group is shown as a folder with id FOLDER_BASE + group id,
- * the server never sees these folders. One instance per account, must be used from the UI thread.
+ * the server never sees these folders. Stored in the "groups" and "members" sections of ForkSettingsStore.
+ * One instance per account, must be used from the UI thread.
  */
 public class LocalGroupsController extends BaseController {
 
@@ -45,8 +44,13 @@ public class LocalGroupsController extends BaseController {
     public static class Group {
         public int id;
         public String title;
+        public int order;
     }
 
+    // the stored records, deletion marks included
+    private JSONObject groupsJson = new JSONObject();
+    private JSONObject membersJson = new JSONObject();
+    // what is in effect: live groups by order, chats of live groups
     private ArrayList<Group> groups = new ArrayList<>();
     private HashMap<Long, Integer> members = new HashMap<>();
     private final SparseArray<TLRPC.TL_dialogFolder> rows = new SparseArray<>();
@@ -66,74 +70,77 @@ public class LocalGroupsController extends BaseController {
             return;
         }
         loadedForUserId = userId;
-        groups = new ArrayList<>();
-        members = new HashMap<>();
         rows.clear();
-        final String json = getPrefs().getString("groups_" + userId, null);
-        if (json == null) {
-            addDefault(LocaleController.getString(R.string.LocalGroupFamily));
-            addDefault(LocaleController.getString(R.string.LocalGroupFriends));
-            addDefault(LocaleController.getString(R.string.LocalGroupWork));
-            addDefault(LocaleController.getString(R.string.LocalGroupBots));
-            return;
+        final JSONObject root = ForkSettingsStore.get(userId);
+        groupsJson = ForkSettingsStore.section(root, ForkSettingsStore.GROUPS);
+        membersJson = ForkSettingsStore.section(root, ForkSettingsStore.MEMBERS);
+        if (groupsJson.length() == 0 && userId != 0) {
+            putGroup(LocaleController.getString(R.string.LocalGroupFamily));
+            putGroup(LocaleController.getString(R.string.LocalGroupFriends));
+            putGroup(LocaleController.getString(R.string.LocalGroupWork));
+            putGroup(LocaleController.getString(R.string.LocalGroupBots));
+            ForkSettingsStore.save(userId);
         }
-        try {
-            final JSONObject root = new JSONObject(json);
-            final JSONArray list = root.getJSONArray("groups");
-            for (int i = 0; i < list.length(); i++) {
-                final JSONObject o = list.getJSONObject(i);
-                final Group group = new Group();
-                group.id = o.getInt("id");
-                group.title = o.getString("title");
-                groups.add(group);
+        rebuild();
+    }
+
+    /** Fills groups and members from the stored records. */
+    private void rebuild() {
+        groups = new ArrayList<>();
+        for (Iterator<String> it = groupsJson.keys(); it.hasNext(); ) {
+            final String id = it.next();
+            final JSONObject o = groupsJson.optJSONObject(id);
+            if (o == null || o.optBoolean("deleted")) {
+                continue;
             }
-            final JSONObject map = root.getJSONObject("members");
-            for (Iterator<String> it = map.keys(); it.hasNext(); ) {
-                final String did = it.next();
-                members.put(Long.parseLong(did), map.getInt(did));
+            final Group group = new Group();
+            group.id = Integer.parseInt(id);
+            group.title = o.optString("title");
+            group.order = o.optInt("order");
+            groups.add(group);
+        }
+        Collections.sort(groups, (a, b) -> a.order != b.order ? Integer.compare(a.order, b.order) : Integer.compare(a.id, b.id));
+        members = new HashMap<>();
+        for (Iterator<String> it = membersJson.keys(); it.hasNext(); ) {
+            final String did = it.next();
+            final JSONObject o = membersJson.optJSONObject(did);
+            final int groupId = o != null ? o.optInt("g") : 0;
+            if (groupId != 0 && findGroup(groupId) != null) {
+                members.put(Long.parseLong(did), groupId);
             }
-        } catch (Exception e) {
-            FileLog.e(e);
         }
     }
 
-    private void addDefault(String title) {
-        final Group group = new Group();
-        group.id = groups.size() + 1;
-        group.title = title;
-        groups.add(group);
+    private int putGroup(String title) {
+        int order = 0;
+        for (Iterator<String> it = groupsJson.keys(); it.hasNext(); ) {
+            final JSONObject o = groupsJson.optJSONObject(it.next());
+            if (o != null) {
+                order = Math.max(order, o.optInt("order"));
+            }
+        }
+        final int id = ForkSettingsStore.newGroupId(groupsJson);
+        putRecord(groupsJson, String.valueOf(id), ForkSettingsStore.record("title", title, "order", order + 1, "t", ForkSettingsStore.now()));
+        return id;
     }
 
-    private void save() {
+    private void putMember(long did, int groupId, long t) {
+        putRecord(membersJson, String.valueOf(did), ForkSettingsStore.record("g", groupId, "t", t));
+    }
+
+    private static void putRecord(JSONObject section, String key, JSONObject record) {
         try {
-            final JSONArray list = new JSONArray();
-            for (Group group : groups) {
-                final JSONObject o = new JSONObject();
-                o.put("id", group.id);
-                o.put("title", group.title);
-                list.put(o);
-            }
-            final JSONObject map = new JSONObject();
-            for (HashMap.Entry<Long, Integer> e : members.entrySet()) {
-                map.put(String.valueOf(e.getKey()), e.getValue());
-            }
-            final JSONObject root = new JSONObject();
-            root.put("groups", list);
-            root.put("members", map);
-            getPrefs().edit().putString("groups_" + loadedForUserId, root.toString()).apply();
+            section.put(key, record);
         } catch (Exception e) {
             FileLog.e(e);
         }
     }
 
     private void onChanged() {
-        save();
+        ForkSettingsStore.save(loadedForUserId);
+        rebuild();
         getMessagesController().sortDialogs(null);
         getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
-    }
-
-    private SharedPreferences getPrefs() {
-        return ApplicationLoader.applicationContext.getSharedPreferences("local_groups", Activity.MODE_PRIVATE);
     }
 
     public ArrayList<Group> getGroups() {
@@ -141,14 +148,18 @@ public class LocalGroupsController extends BaseController {
         return new ArrayList<>(groups);
     }
 
-    public Group getGroup(int groupId) {
-        ensureLoaded();
+    private Group findGroup(int groupId) {
         for (Group group : groups) {
             if (group.id == groupId) {
                 return group;
             }
         }
         return null;
+    }
+
+    public Group getGroup(int groupId) {
+        ensureLoaded();
+        return findGroup(groupId);
     }
 
     public String getTitle(int folderId) {
@@ -163,15 +174,12 @@ public class LocalGroupsController extends BaseController {
         return groupId != null ? groupId : 0;
     }
 
-    /** groupId 0 takes the chats out of their groups */
+    /** groupId 0 takes the chats out of their groups, leaving a mark that they were taken out */
     public void setGroup(ArrayList<Long> dids, int groupId) {
         ensureLoaded();
+        final long t = ForkSettingsStore.now();
         for (long did : dids) {
-            if (groupId == 0) {
-                members.remove(did);
-            } else {
-                members.put(did, groupId);
-            }
+            putMember(did, groupId, t);
         }
         onChanged();
     }
@@ -182,6 +190,7 @@ public class LocalGroupsController extends BaseController {
      */
     public int addAllBots(int groupId) {
         ensureLoaded();
+        final long t = ForkSettingsStore.now();
         int count = 0;
         for (TLRPC.Dialog d : getMessagesController().getAllDialogs()) {
             if (!(d instanceof TLRPC.TL_dialog) || d.id <= 0 || d.folder_id != 0 || members.containsKey(d.id)) {
@@ -189,7 +198,7 @@ public class LocalGroupsController extends BaseController {
             }
             final TLRPC.User user = getMessagesController().getUser(d.id);
             if (user != null && user.bot) {
-                members.put(d.id, groupId);
+                putMember(d.id, groupId, t);
                 count++;
             }
         }
@@ -201,36 +210,43 @@ public class LocalGroupsController extends BaseController {
 
     public int createGroup(String title) {
         ensureLoaded();
-        int maxId = 0;
-        for (Group group : groups) {
-            maxId = Math.max(maxId, group.id);
-        }
-        final Group group = new Group();
-        group.id = maxId + 1;
-        group.title = title;
-        groups.add(group);
+        final int id = putGroup(title);
         onChanged();
-        return group.id;
+        return id;
     }
 
     public void renameGroup(int groupId, String title) {
-        final Group group = getGroup(groupId);
-        if (group != null) {
-            group.title = title;
-            onChanged();
-        }
-    }
-
-    /** The chats of a deleted group go back to the chat list. */
-    public void deleteGroup(int groupId) {
-        final Group group = getGroup(groupId);
-        if (group == null) {
+        ensureLoaded();
+        final JSONObject o = groupsJson.optJSONObject(String.valueOf(groupId));
+        if (o == null) {
             return;
         }
-        groups.remove(group);
-        for (Iterator<Integer> it = members.values().iterator(); it.hasNext(); ) {
-            if (it.next() == groupId) {
-                it.remove();
+        try {
+            o.put("title", title);
+            o.put("t", ForkSettingsStore.now());
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        onChanged();
+    }
+
+    /** The chats of a deleted group go back to the chat list; the group stays as a deletion mark. */
+    public void deleteGroup(int groupId) {
+        ensureLoaded();
+        final JSONObject o = groupsJson.optJSONObject(String.valueOf(groupId));
+        if (o == null) {
+            return;
+        }
+        final long t = ForkSettingsStore.now();
+        try {
+            o.put("deleted", true);
+            o.put("t", t);
+        } catch (Exception e) {
+            FileLog.e(e);
+        }
+        for (HashMap.Entry<Long, Integer> e : members.entrySet()) {
+            if (e.getValue() == groupId) {
+                putMember(e.getKey(), 0, t);
             }
         }
         rows.remove(groupId);
@@ -253,7 +269,7 @@ public class LocalGroupsController extends BaseController {
                 continue;
             }
             final int groupId = getGroupOf(d.id);
-            if (groupId == 0 || getGroup(groupId) == null) {
+            if (groupId == 0) {
                 continue;
             }
             main.remove(a--);

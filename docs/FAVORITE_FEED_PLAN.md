@@ -46,6 +46,8 @@
   по одному экземпляру на аккаунт (`getInstance(int account)`).
 - Хранение локально, отдельно для каждого аккаунта: свой файл настроек `favorite_feed`,
   ключ `channels_<userId>` (`PrefsFavoriteChannelsStore`).
+  _Позже:_ список переехал в общий документ настроек форка, секция `feed`
+  (`ForkFavoriteChannelsStore`, формат в `docs/FORK_SETTINGS.md`).
   _Изменено при реализации:_ сначала планировалась таблица `favorite_channels` в базе
   `MessagesStorage` с подъёмом `LAST_DB_VERSION`. От неё отказались: эту базу клиент
   стирает при «Очистить кэш», сбросе и ошибках миграции, и список пропадал бы. К тому же
