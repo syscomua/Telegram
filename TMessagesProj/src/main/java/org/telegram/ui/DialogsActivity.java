@@ -114,6 +114,7 @@ import org.telegram.messenger.ImageLoader;
 import org.telegram.messenger.ImageLocation;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.LiteMode;
+import org.telegram.messenger.ForkUiSettings;
 import org.telegram.messenger.LocalGroupsController;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaController;
@@ -7038,6 +7039,9 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
     @Override
     public void onResume() {
         super.onResume();
+        // the buttons may have been switched off in chat settings meanwhile
+        updateFloatingButtonVisibility(false);
+        updateFloatingButtonOffset();
         if (dialogStoriesCell != null) {
             dialogStoriesCell.onResume();
         }
@@ -7386,7 +7390,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
                 showArchiveHelp();
             }
         }
-        if (canShowStoryHint && !storyHintShown && storyHint != null && storiesEnabled) {
+        if (canShowStoryHint && !storyHintShown && storyHint != null && storiesEnabled && (!isMainChatList() || ForkUiSettings.isStoryButtonShown())) {
             storyHintShown = true;
             canShowStoryHint = false;
             storyHint.show();
@@ -8871,11 +8875,16 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final boolean isVisible = !(onlySelect && initialDialogsType != 10 || folderId != 0 || communityId != 0 || inPreviewMode || (searching && !onlySelect) || floatingButtonHidden);
 
         if (floatingButton3 != null) {
-            floatingButton3.setButtonVisible(isVisible, animated);
+            floatingButton3.setButtonVisible(isVisible && (!isMainChatList() || ForkUiSettings.isComposeButtonShown()), animated);
         }
         if (floatingButtonStories != null) {
-            floatingButtonStories.setButtonVisible(isVisible, animated);
+            floatingButtonStories.setButtonVisible(isVisible && (!isMainChatList() || ForkUiSettings.isStoryButtonShown()), animated);
         }
+    }
+
+    /** The list the floating buttons of chat settings are about, not a chat picker. */
+    private boolean isMainChatList() {
+        return !onlySelect && initialDialogsType == DIALOGS_TYPE_DEFAULT;
     }
 
     private void updateFloatingButtonOffset() {
@@ -8887,9 +8896,11 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             floatingButton3.setTranslationY(baseTranslationY);
         }
         if (floatingButtonStories != null) {
-            floatingButtonStories.setTranslationY(baseTranslationY - dp(52));
+            // with no compose button the story one takes its place
+            final float storyOffset = isMainChatList() && !ForkUiSettings.isComposeButtonShown() ? 0 : dp(52);
+            floatingButtonStories.setTranslationY(baseTranslationY - storyOffset);
             if (storyHint != null) {
-                storyHint.setTranslationY(baseTranslationY - dp(52));
+                storyHint.setTranslationY(baseTranslationY - storyOffset);
             }
         }
     }
@@ -8899,7 +8910,7 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         final boolean storiesEnabled = getMessagesController().storiesEnabled();
         if (this.storiesEnabled != storiesEnabled) {
             updateFloatingButtonOffset();
-            if (!this.storiesEnabled && storiesEnabled && storyHint != null) {
+            if (!this.storiesEnabled && storiesEnabled && storyHint != null && (!isMainChatList() || ForkUiSettings.isStoryButtonShown())) {
                 storyHint.show();
             }
             this.storiesEnabled = storiesEnabled;

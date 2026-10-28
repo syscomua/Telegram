@@ -56,6 +56,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.FileLoader;
 import org.telegram.messenger.FileLog;
+import org.telegram.messenger.ForkUiSettings;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.MediaDataController;
 import org.telegram.messenger.MessagesController;
@@ -201,6 +202,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
     private int bubbleRadiusInfoRow;
     private int chatListHeaderRow;
     private int chatListRow;
+    private int storyButtonRow;
+    private int composeButtonRow;
     private int chatListInfoRow;
     private int themeListRow;
     private int themeListRow2;
@@ -564,6 +567,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
         bubbleRadiusInfoRow = -1;
         chatListHeaderRow = -1;
         chatListRow = -1;
+        storyButtonRow = -1;
+        composeButtonRow = -1;
         chatListInfoRow = -1;
         chatBlurRow = -1;
         pauseOnRecordRow = -1;
@@ -669,6 +674,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
 
             chatListHeaderRow = rowCount++;
             chatListRow = rowCount++;
+            storyButtonRow = rowCount++;
+            composeButtonRow = rowCount++;
             chatListInfoRow = rowCount++;
 
             appIconHeaderRow = rowCount++;
@@ -1310,6 +1317,16 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         .create();
                 dialogRef.set(dialog);
                 showDialog(dialog);
+            } else if (position == storyButtonRow) {
+                ForkUiSettings.setStoryButtonShown(!ForkUiSettings.isStoryButtonShown());
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(ForkUiSettings.isStoryButtonShown());
+                }
+            } else if (position == composeButtonRow) {
+                ForkUiSettings.setComposeButtonShown(!ForkUiSettings.isComposeButtonShown());
+                if (view instanceof TextCheckCell) {
+                    ((TextCheckCell) view).setChecked(ForkUiSettings.isComposeButtonShown());
+                }
             } else if (position == directShareRow) {
                 SharedConfig.toggleDirectShare();
                 if (view instanceof TextCheckCell) {
@@ -2614,6 +2631,10 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                         textCheckCell.setTextAndValueAndCheck(getString(R.string.PauseMusicOnRecord), getString("PauseMusicOnRecordInfo", R.string.PauseMusicOnRecordInfo), SharedConfig.pauseMusicOnRecord, true, true);
                     } else if (position == pauseOnMediaRow) {
                         textCheckCell.setTextAndCheck(getString(R.string.PauseMusicOnMedia), SharedConfig.pauseMusicOnMedia, true);
+                    } else if (position == storyButtonRow) {
+                        textCheckCell.setTextAndCheck(getString(R.string.ChatListStoryButton), ForkUiSettings.isStoryButtonShown(), true);
+                    } else if (position == composeButtonRow) {
+                        textCheckCell.setTextAndCheck(getString(R.string.ChatListComposeButton), ForkUiSettings.isComposeButtonShown(), false);
                     } else if (position == directShareRow) {
                         textCheckCell.setTextAndValueAndCheck(getString("DirectShare", R.string.DirectShare), getString("DirectShareInfo", R.string.DirectShareInfo), SharedConfig.directShare, false, true);
                     } else if (position == sensitiveContentRow) {
@@ -2753,7 +2774,8 @@ public class ThemeActivity extends BaseFragment implements NotificationCenter.No
                 return TYPE_BRIGHTNESS;
             } else if (position == scheduleLocationRow || position == sendByEnterRow ||
                     position == raiseToSpeakRow || position == raiseToListenRow || position == pauseOnRecordRow ||
-                    position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow) {
+                    position == directShareRow || position == chatBlurRow || position == pauseOnMediaRow || position == nextMediaTapRow || position == sensitiveContentRow ||
+                    position == storyButtonRow || position == composeButtonRow) {
                 return TYPE_TEXT_CHECK;
             } else if (position == textSizeRow) {
                 return TYPE_TEXT_SIZE;
