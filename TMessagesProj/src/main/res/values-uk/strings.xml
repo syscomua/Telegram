@@ -304,6 +304,8 @@
     <string name="LocalGroupDelete">Видалити групу</string>
     <string name="LocalGroupDeleted">Групу **%1$s** видалено, її чати повернулися до списку</string>
     <string name="LocalGroupTitleHint">Назва групи</string>
+    <string name="LocalGroupAddBots">Додати всіх ботів</string>
+    <string name="LocalGroupBotsAdded">Ботів перенесено до **%2$s**: %1$d</string>
     <string name="FavoriteFeedChannels_one">%1$d канал</string>
     <string name="FavoriteFeedChannels_few">%1$d канали</string>
     <string name="FavoriteFeedChannels_many">%1$d каналів</string>

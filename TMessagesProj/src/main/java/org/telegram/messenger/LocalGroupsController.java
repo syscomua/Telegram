@@ -176,6 +176,29 @@ public class LocalGroupsController extends BaseController {
         onChanged();
     }
 
+    /**
+     * One-off: moves into the group every bot of the main list that is in no group yet.
+     * @return how many bots were moved
+     */
+    public int addAllBots(int groupId) {
+        ensureLoaded();
+        int count = 0;
+        for (TLRPC.Dialog d : getMessagesController().getAllDialogs()) {
+            if (!(d instanceof TLRPC.TL_dialog) || d.id <= 0 || d.folder_id != 0 || members.containsKey(d.id)) {
+                continue;
+            }
+            final TLRPC.User user = getMessagesController().getUser(d.id);
+            if (user != null && user.bot) {
+                members.put(d.id, groupId);
+                count++;
+            }
+        }
+        if (count > 0) {
+            onChanged();
+        }
+        return count;
+    }
+
     public int createGroup(String title) {
         ensureLoaded();
         int maxId = 0;

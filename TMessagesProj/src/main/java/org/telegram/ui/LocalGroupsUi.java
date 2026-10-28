@@ -81,13 +81,19 @@ public class LocalGroupsUi {
         final BottomSheet.Builder builder = new BottomSheet.Builder(fragment.getParentActivity());
         builder.setTitle(title);
         builder.setItems(new CharSequence[]{
+            getString(R.string.LocalGroupAddBots),
             getString(R.string.LocalGroupRename),
             getString(R.string.LocalGroupDelete)
         }, new int[]{
+            R.drawable.msg_folders_bots,
             R.drawable.msg_edit,
             R.drawable.msg_delete
         }, (d, which) -> {
             if (which == 0) {
+                final int count = controller.addAllBots(groupId);
+                BulletinFactory.of(fragment).createSimpleBulletin(R.raw.contact_check,
+                    AndroidUtilities.replaceTags(formatString(R.string.LocalGroupBotsAdded, count, title))).show();
+            } else if (which == 1) {
                 askTitle(fragment, getString(R.string.LocalGroupRename), title, newTitle -> controller.renameGroup(groupId, newTitle));
             } else {
                 controller.deleteGroup(groupId);

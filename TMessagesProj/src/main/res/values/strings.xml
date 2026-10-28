@@ -11654,6 +11654,8 @@
     <string name="LocalGroupDelete">Delete group</string>
     <string name="LocalGroupDeleted">Group **%1$s** deleted, its chats are back in the list</string>
     <string name="LocalGroupTitleHint">Group name</string>
+    <string name="LocalGroupAddBots">Add all bots</string>
+    <string name="LocalGroupBotsAdded">Bots moved to **%2$s**: %1$d</string>
     <string name="FavoriteFeedChannels_one">%1$d channel</string>
     <string name="FavoriteFeedChannels_other">%1$d channels</string>
     <string name="FavoriteFeedEmptyHint">No channels in the feed yet. Open a channel, tap ⋮ and choose \"Add to Favorite Feed\".</string>
