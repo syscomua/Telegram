@@ -12846,14 +12846,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         } else if (isArchive()) {
             newVisibility = !getStoriesController().getHiddenList().isEmpty();
         } else {
-            newVisibility = !onlySelfStories && getStoriesController().hasStories();
-            onlySelfStories = getStoriesController().hasOnlySelfStories();
-        }
-
-        // switched off in chat settings: as if nobody had stories
-        if (!isArchive() && communityId == 0 && !ForkUiSettings.isStoriesBarShown()) {
-            newVisibility = false;
-            onlySelfStories = false;
+            // switched off in chat settings: as if nobody had stories
+            final boolean barShown = ForkUiSettings.isStoriesBarShown();
+            newVisibility = barShown && !onlySelfStories && getStoriesController().hasStories();
+            onlySelfStories = barShown && getStoriesController().hasOnlySelfStories();
         }
 
         hasOnlySlefStories = onlySelfStories;
