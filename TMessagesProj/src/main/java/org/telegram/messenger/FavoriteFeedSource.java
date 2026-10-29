@@ -175,16 +175,69 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         }
         if (!refreshed) {
             refreshed = true;
-            for (int a = 0; a < channels.size(); a++) {
-                // without the chat in memory there is no access hash for a request yet
-                if (MessagesController.getInstance(currentAccount).getChat(-channels.get(a)) != null) {
-                    enqueueFetch(channels.get(a), 0);
-                }
-            }
-            runAfterFetches(this::readPage);
+            refreshStaleChannels();
         } else {
             readPage();
         }
+    }
+
+    /**
+     * As a chat opens from its cache: only a channel whose cache stops short of the
+     * dialog's top_message asks the server for its newest posts, the rest are read
+     * from the database at once.
+     */
+    private void refreshStaleChannels() {
+        final int gen = generation;
+        final MessagesController controller = MessagesController.getInstance(currentAccount);
+        final ArrayList<Long> requestable = new ArrayList<>();
+        final HashMap<Long, Integer> topMessages = new HashMap<>();
+        for (int a = 0; a < channels.size(); a++) {
+            final long dialogId = channels.get(a);
+            // without the chat in memory there is no access hash for a request yet
+            if (controller.getChat(-dialogId) == null) {
+                continue;
+            }
+            requestable.add(dialogId);
+            final TLRPC.Dialog dialog = controller.dialogs_dict.get(dialogId);
+            topMessages.put(dialogId, dialog != null ? dialog.top_message : 0);
+        }
+        if (requestable.isEmpty()) {
+            readPage();
+            return;
+        }
+        final String ids = TextUtils.join(",", requestable);
+        final MessagesStorage storage = MessagesStorage.getInstance(currentAccount);
+        storage.getStorageQueue().postRunnable(() -> {
+            final HashMap<Long, Integer> newestLocal = new HashMap<>();
+            SQLiteCursor cursor = null;
+            try {
+                cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
+                    "SELECT uid, MAX(mid) FROM messages_v2 WHERE uid IN (%s) GROUP BY uid", ids));
+                while (cursor.next()) {
+                    newestLocal.put(cursor.longValue(0), cursor.intValue(1));
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            } finally {
+                if (cursor != null) {
+                    cursor.dispose();
+                }
+            }
+            AndroidUtilities.runOnUIThread(() -> {
+                if (gen != generation) {
+                    return;
+                }
+                for (int a = 0; a < requestable.size(); a++) {
+                    final long dialogId = requestable.get(a);
+                    final int top = topMessages.get(dialogId);
+                    final Integer newest = newestLocal.get(dialogId);
+                    if (top == 0 || newest == null || newest < top) {
+                        enqueueFetch(dialogId, 0);
+                    }
+                }
+                runAfterFetches(this::readPage);
+            });
+        });
     }
 
     private void runAfterFetches(Runnable runnable) {
