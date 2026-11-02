@@ -478,6 +478,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             }
             objects.add(toFeedObject(message, nextId--));
         }
+        trace("objects built " + objects.size());
         result.messages.addAll(objects);
         result.loading = false;
         result.endReached = end;

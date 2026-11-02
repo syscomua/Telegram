@@ -2735,6 +2735,7 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public boolean onFragmentCreate() {
+        android.util.Log.d("FeedTrace", "chat onFragmentCreate");
         final long chatId = arguments.getLong("chat_id", 0);
         final long userId = arguments.getLong("user_id", 0);
         final int encId = arguments.getInt("enc_id", 0);
@@ -20979,7 +20980,9 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void didReceivedNotification(int id, int account, final Object... args) {
         if (id == NotificationCenter.messagesDidLoad) {
+            if (isFavoriteFeed()) FavoriteFeedSource.trace("chat messagesDidLoad in");
             didReceivedNotification_messagesDidLoad(id, account, args);
+            if (isFavoriteFeed()) FavoriteFeedSource.trace("chat messagesDidLoad out");
         } else {
             didReceivedNotification2(id, account, args);
             didReceivedNotification3(id, account, args);
@@ -24962,6 +24965,7 @@ public class ChatActivity extends BaseFragment implements
             if (guid != classGuid) {
                 return;
             }
+            if (isFavoriteFeed()) FavoriteFeedSource.trace("chat hashtagSearchUpdated");
 
             int count = (Integer) args[1];
             endReached[0] = (Boolean) args[2];
@@ -27803,6 +27807,7 @@ public class ChatActivity extends BaseFragment implements
 
     @Override
     public void onTransitionAnimationEnd(boolean isOpen, boolean backward) {
+        if (isFavoriteFeed()) FavoriteFeedSource.trace("chat transition end open=" + isOpen);
         super.onTransitionAnimationEnd(isOpen, backward);
         if (isOpen) {
             if (backward) {
