@@ -1,6 +1,5 @@
 package org.telegram.messenger;
 
-import android.text.TextUtils;
 
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.tgnet.ConnectionsManager;
@@ -284,16 +283,20 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             readPage();
             return;
         }
-        final String ids = TextUtils.join(",", requestable);
         final MessagesStorage storage = MessagesStorage.getInstance(currentAccount);
         storage.getStorageQueue().postRunnable(() -> {
             final HashMap<Long, Integer> newestLocal = new HashMap<>();
             SQLiteCursor cursor = null;
             try {
-                cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
-                    "SELECT uid, MAX(mid) FROM messages_v2 WHERE uid IN (%s) GROUP BY uid", ids));
-                while (cursor.next()) {
-                    newestLocal.put(cursor.longValue(0), cursor.intValue(1));
+                // MAX per channel takes one step down its index, GROUP BY over all of them scanned every row
+                for (int a = 0; a < requestable.size(); a++) {
+                    cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
+                        "SELECT MAX(mid) FROM messages_v2 WHERE uid = %d", requestable.get(a)));
+                    if (cursor.next() && !cursor.isNull(0)) {
+                        newestLocal.put(requestable.get(a), cursor.intValue(0));
+                    }
+                    cursor.dispose();
+                    cursor = null;
                 }
             } catch (Exception e) {
                 FileLog.e(e);
@@ -332,7 +335,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
     private void readPage() {
         trace("readPage from=" + cursorDate);
         final int gen = generation;
-        final String ids = TextUtils.join(",", channels);
+        final ArrayList<Long> channelList = new ArrayList<>(channels);
         final int fromDate = cursorDate;
         final int fromMid = cursorMid;
         final boolean needOldest = !oldestLocalLoaded;
@@ -373,17 +376,31 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                     cursor = null;
                 }
                 if (needOldest) {
-                    cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
-                        "SELECT uid, MIN(date), MIN(mid) FROM messages_v2 WHERE uid IN (%s) GROUP BY uid", ids));
-                    while (cursor.next()) {
-                        oldest.put(cursor.longValue(0), new int[]{cursor.intValue(1), cursor.intValue(2)});
+                    for (int a = 0; a < channelList.size(); a++) {
+                        final long uid = channelList.get(a);
+                        cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
+                            "SELECT (SELECT MIN(date) FROM messages_v2 WHERE uid = %d), (SELECT MIN(mid) FROM messages_v2 WHERE uid = %d)", uid, uid));
+                        if (cursor.next() && !cursor.isNull(0)) {
+                            oldest.put(uid, new int[]{cursor.intValue(0), cursor.intValue(1)});
+                        }
+                        cursor.dispose();
+                        cursor = null;
                     }
-                    cursor.dispose();
-                    cursor = null;
                 }
                 final String after = fromDate == 0 ? "" : String.format(Locale.US, " AND (date < %d OR (date = %d AND mid < %d))", fromDate, fromDate, fromMid);
+                // a page per channel along its (uid, date, mid) index, then merged: one query over
+                // all the channels sorted every message they have by date, slow on a cold start
+                final StringBuilder perChannel = new StringBuilder();
+                for (int a = 0; a < channelList.size(); a++) {
+                    if (a > 0) {
+                        perChannel.append(" UNION ALL ");
+                    }
+                    perChannel.append(String.format(Locale.US,
+                        "SELECT * FROM (SELECT data, mid, uid, date, custom_params FROM messages_v2 WHERE uid = %d%s ORDER BY date DESC, mid DESC LIMIT %d)",
+                        channelList.get(a), after, PAGE_SIZE));
+                }
                 cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
-                    "SELECT data, mid, uid, date, custom_params FROM messages_v2 WHERE uid IN (%s)%s ORDER BY date DESC, mid DESC LIMIT %d", ids, after, PAGE_SIZE));
+                    "SELECT data, mid, uid, date, custom_params FROM (%s) ORDER BY date DESC, mid DESC LIMIT %d", perChannel, PAGE_SIZE));
                 while (cursor.next()) {
                     rowsRead++;
                     lastMid = cursor.intValue(1);
@@ -418,6 +435,19 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             }
             final ArrayList<TLRPC.User> users = usersToLoad.isEmpty() ? new ArrayList<>() : storage.getUsers(usersToLoad);
             final ArrayList<TLRPC.Chat> chats = chatsToLoad.isEmpty() ? new ArrayList<>() : storage.getChats(chatsToLoad);
+            // laid out here, as a chat lays out its loaded messages off the UI thread
+            final HashMap<Long, TLRPC.User> usersDict = new HashMap<>();
+            for (int a = 0; a < users.size(); a++) {
+                usersDict.put(users.get(a).id, users.get(a));
+            }
+            final HashMap<Long, TLRPC.Chat> chatsDict = new HashMap<>();
+            for (int a = 0; a < chats.size(); a++) {
+                chatsDict.put(chats.get(a).id, chats.get(a));
+            }
+            final ArrayList<MessageObject> built = new ArrayList<>(page.size());
+            for (int a = 0; a < page.size(); a++) {
+                built.add(buildFeedObject(page.get(a), usersDict, chatsDict));
+            }
             final boolean dbEnd = rowsRead < PAGE_SIZE;
             final int pageDate = lastDate;
             final int pageMid = lastMid;
@@ -461,22 +491,27 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                     runAfterFetches(this::readPage);
                     return;
                 }
-                deliver(page, dbEnd, pageDate, pageMid);
+                deliver(built, dbEnd, pageDate, pageMid);
             });
         });
     }
 
-    private void deliver(ArrayList<TLRPC.Message> page, boolean end, int pageDate, int pageMid) {
+    private void deliver(ArrayList<MessageObject> page, boolean end, int pageDate, int pageMid) {
         trace("deliver " + page.size() + " end=" + end);
         cursorDate = pageDate;
         cursorMid = pageMid;
         final ArrayList<MessageObject> objects = new ArrayList<>();
         for (int a = 0; a < page.size(); a++) {
-            final TLRPC.Message message = page.get(a);
-            if (idsByKey.containsKey(key(message.dialog_id, message.id))) {
+            final MessageObject object = page.get(a);
+            final TLRPC.Message message = object.messageOwner;
+            final String key = key(message.dialog_id, message.realId);
+            if (idsByKey.containsKey(key)) {
                 continue;
             }
-            objects.add(toFeedObject(message, nextId--));
+            final int feedId = nextId--;
+            idsByKey.put(key, feedId);
+            message.id = feedId;
+            objects.add(object);
         }
         trace("objects built " + objects.size());
         result.messages.addAll(objects);
@@ -487,6 +522,14 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         final NotificationCenter center = NotificationCenter.getInstance(currentAccount);
         center.postNotificationName(NotificationCenter.messagesDidLoad, 0L, objects.size(), objects, false, 0, 0, 0, 0, 2, true, guid, loadIndex, 0, 0, ChatActivity.MODE_SEARCH);
         center.postNotificationName(NotificationCenter.hashtagSearchUpdated, guid, result.count, result.endReached, 0, 0, 0);
+    }
+
+    /** A feed post read from the database, laid out off the UI thread; deliver() gives it its feed id. */
+    private MessageObject buildFeedObject(TLRPC.Message message, HashMap<Long, TLRPC.User> users, HashMap<Long, TLRPC.Chat> chats) {
+        message.realId = message.id;
+        final MessageObject object = new MessageObject(currentAccount, message, users, chats, true, true);
+        object.isFavoriteFeedPost = true;
+        return object;
     }
 
     /** Message of the feed: generated id, the original one in realId, channel avatar shown. */
