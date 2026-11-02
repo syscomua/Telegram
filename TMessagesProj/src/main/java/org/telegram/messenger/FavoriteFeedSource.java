@@ -197,16 +197,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         return available;
     }
 
-    // TEMP trace of the feed opening, logcat tag FeedTrace
-    private static long traceStart;
-
-    public static void trace(String what) {
-        android.util.Log.d("FeedTrace", (android.os.SystemClock.elapsedRealtime() - traceStart) + " ms " + what);
-    }
-
     public void clear() {
-        traceStart = android.os.SystemClock.elapsedRealtime();
-        trace("clear");
         generation++;
         result.clear();
         result.lastGeneratedId = 0;
@@ -251,7 +242,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             });
             return;
         }
-        trace("load index=" + loadIndex + " channels=" + channels.size() + " refreshed=" + refreshed);
         if (!refreshed) {
             refreshed = true;
             refreshStaleChannels();
@@ -315,11 +305,9 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                     final int top = topMessages.get(dialogId);
                     final Integer newest = newestLocal.get(dialogId);
                     if (top == 0 || newest == null || newest < top) {
-                        trace("stale " + dialogId + " top=" + top + " newestLocal=" + newest);
                         enqueueFetch(dialogId, 0);
                     }
                 }
-                trace("cache checked, requestable=" + requestable.size());
                 runAfterFetches(this::readPage);
             });
         });
@@ -334,7 +322,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
     }
 
     private void readPage() {
-        trace("readPage from=" + cursorDate);
         final int gen = generation;
         final ArrayList<Long> channelList = new ArrayList<>(channels);
         final int fromDate = cursorDate;
@@ -484,7 +471,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                     }
                     final int[] old = oldestLocal.get(dialogId);
                     if (old == null || dbEnd || old[0] > pageDate || old[0] == pageDate && old[1] >= pageMid) {
-                        trace("older " + dialogId + " oldestLocal=" + (old != null ? old[0] + "/" + old[1] : "none") + " page=" + pageDate + " dbEnd=" + dbEnd);
                         enqueueFetch(dialogId, old != null ? old[1] : 0);
                         fetchingOlder = true;
                     }
@@ -499,7 +485,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
     }
 
     private void deliver(ArrayList<MessageObject> page, boolean end, int pageDate, int pageMid) {
-        trace("deliver " + page.size() + " end=" + end);
         cursorDate = pageDate;
         cursorMid = pageMid;
         final ArrayList<MessageObject> objects = new ArrayList<>();
@@ -515,7 +500,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             message.id = feedId;
             objects.add(object);
         }
-        trace("objects built " + objects.size());
         result.messages.addAll(objects);
         result.loading = false;
         result.endReached = end;
@@ -654,7 +638,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
     private void startFetches() {
         while (!floodPaused && activeFetches < MAX_PARALLEL_FETCHES && !fetchQueue.isEmpty()) {
             final long[] fetch = fetchQueue.poll();
-            trace("fetch start " + fetch[0] + " maxId=" + fetch[1]);
             activeFetches++;
             final int index = lastFetchIndex++;
             fetchesByLoadIndex.put(index, fetch);
@@ -684,7 +667,6 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                 return;
             }
             final ArrayList<MessageObject> objects = (ArrayList<MessageObject>) args[2];
-            trace("fetch done " + fetch[0] + " got=" + objects.size());
             final int[] before = oldestLocal.get(fetch[0]);
             for (int a = 0; a < objects.size(); a++) {
                 updateOldestLocal(fetch[0], objects.get(a).messageOwner.date, objects.get(a).getId());
