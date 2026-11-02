@@ -1,6 +1,5 @@
 package org.telegram.messenger;
 
-
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.tgnet.ConnectionsManager;
 import org.telegram.tgnet.NativeByteBuffer;
@@ -27,6 +26,8 @@ import java.util.Locale;
 public class FavoriteFeedSource implements NotificationCenter.NotificationCenterDelegate {
 
     private static final int PAGE_SIZE = 50;
+    // enough to fill the screen: laying out a long channel post takes ~13 ms, the rest comes on scroll
+    private static final int FIRST_PAGE_SIZE = 20;
     private static final int FETCH_SIZE = 30;
     private static final int MAX_PARALLEL_FETCHES = 3;
 
@@ -338,6 +339,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         final ArrayList<Long> channelList = new ArrayList<>(channels);
         final int fromDate = cursorDate;
         final int fromMid = cursorMid;
+        final int limit = fromDate == 0 ? FIRST_PAGE_SIZE : PAGE_SIZE;
         final boolean needOldest = !oldestLocalLoaded;
         // for the first page: where each channel with unread posts stops being read
         final HashMap<Long, Integer> readInboxMax = new HashMap<>();
@@ -397,10 +399,10 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
                     }
                     perChannel.append(String.format(Locale.US,
                         "SELECT * FROM (SELECT data, mid, uid, date, custom_params FROM messages_v2 WHERE uid = %d%s ORDER BY date DESC, mid DESC LIMIT %d)",
-                        channelList.get(a), after, PAGE_SIZE));
+                        channelList.get(a), after, limit));
                 }
                 cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
-                    "SELECT data, mid, uid, date, custom_params FROM (%s) ORDER BY date DESC, mid DESC LIMIT %d", perChannel, PAGE_SIZE));
+                    "SELECT data, mid, uid, date, custom_params FROM (%s) ORDER BY date DESC, mid DESC LIMIT %d", perChannel, limit));
                 while (cursor.next()) {
                     rowsRead++;
                     lastMid = cursor.intValue(1);
@@ -448,7 +450,7 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
             for (int a = 0; a < page.size(); a++) {
                 built.add(buildFeedObject(page.get(a), usersDict, chatsDict));
             }
-            final boolean dbEnd = rowsRead < PAGE_SIZE;
+            final boolean dbEnd = rowsRead < limit;
             final int pageDate = lastDate;
             final int pageMid = lastMid;
             final int firstUnread = unreadDate;
