@@ -19759,6 +19759,7 @@ public class ChatActivity extends BaseFragment implements
             return;
         }
         final int date = FavoriteFeedSource.getInstance(currentAccount).getFirstUnreadDate();
+        FavoriteFeedSource.trace("position firstUnread=" + date + " messages=" + messages.size());
         if (date == 0) {
             feedPositioned = true;
             showFeedList();
@@ -19781,6 +19782,7 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private void showFeedList() {
+        FavoriteFeedSource.trace("showFeedList alpha=" + (chatListView != null ? chatListView.getAlpha() : -1));
         if (chatListView != null && chatListView.getAlpha() < 1f) {
             chatListView.animate().alpha(1f).setDuration(150).start();
         }
