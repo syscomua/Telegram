@@ -107,6 +107,75 @@ public class FavoriteFeedSource implements NotificationCenter.NotificationCenter
         return local == null ? dialog.read_inbox_max_id : Math.max(local, dialog.read_inbox_max_id);
     }
 
+    /** Reads everything up to each channel's newest message. */
+    public static final int READ_ALL = Integer.MAX_VALUE;
+
+    /**
+     * Having scrolled the feed past a time means having read every channel up to it:
+     * each channel is marked read up to its newest local message not later than the date,
+     * whether or not one of its posts was on screen. Service messages count too, the feed
+     * never shows them and a newer one would keep its channel unread for good.
+     */
+    public void markReadUpTo(int date) {
+        final MessagesController controller = MessagesController.getInstance(currentAccount);
+        final ArrayList<Long> channels = getAvailableChannels();
+        final HashMap<Long, Integer> readMax = new HashMap<>();
+        for (int a = 0; a < channels.size(); a++) {
+            final TLRPC.Dialog dialog = controller.dialogs_dict.get(channels.get(a));
+            if (dialog != null && (dialog.unread_count > 0 || dialog.unread_mark)) {
+                readMax.put(dialog.id, getReadInboxMax(controller, dialog));
+            }
+        }
+        if (readMax.isEmpty()) {
+            return;
+        }
+        final MessagesStorage storage = MessagesStorage.getInstance(currentAccount);
+        storage.getStorageQueue().postRunnable(() -> {
+            // dialog id -> newest mid, incoming posts in between, its date
+            final HashMap<Long, int[]> found = new HashMap<>();
+            SQLiteCursor cursor = null;
+            try {
+                for (HashMap.Entry<Long, Integer> entry : readMax.entrySet()) {
+                    cursor = storage.getDatabase().queryFinalized(String.format(Locale.US,
+                        "SELECT MAX(mid), SUM(CASE WHEN out = 0 THEN 1 ELSE 0 END), MAX(date) FROM messages_v2 WHERE uid = %d AND mid > %d AND date <= %d",
+                        entry.getKey(), entry.getValue(), date));
+                    if (cursor.next() && !cursor.isNull(0)) {
+                        found.put(entry.getKey(), new int[]{cursor.intValue(0), cursor.intValue(1), cursor.intValue(2)});
+                    }
+                    cursor.dispose();
+                    cursor = null;
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+            } finally {
+                if (cursor != null) {
+                    cursor.dispose();
+                }
+            }
+            AndroidUtilities.runOnUIThread(() -> {
+                for (Long dialogId : readMax.keySet()) {
+                    final TLRPC.Dialog dialog = controller.dialogs_dict.get(dialogId);
+                    if (dialog == null) {
+                        continue;
+                    }
+                    final int[] newest = found.get(dialogId);
+                    int mid = newest != null ? newest[0] : 0;
+                    int readDate = newest != null ? newest[2] : 0;
+                    if (date == READ_ALL && dialog.top_message > mid) {
+                        // posts never downloaded are read as well
+                        mid = dialog.top_message;
+                        readDate = ConnectionsManager.getInstance(currentAccount).getCurrentTime();
+                    }
+                    if (mid <= getReadInboxMax(controller, dialog)) {
+                        continue;
+                    }
+                    final int count = newest != null ? newest[1] : 0;
+                    controller.markDialogAsRead(dialogId, mid, mid, readDate, false, 0, Math.max(1, count), mid >= dialog.top_message, 0);
+                }
+            });
+        });
+    }
+
     private static String key(long dialogId, int mid) {
         return dialogId + "_" + mid;
     }

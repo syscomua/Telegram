@@ -18,6 +18,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.FavoriteChannelsController;
+import org.telegram.messenger.FavoriteFeedSource;
 import org.telegram.messenger.HashtagSearchController;
 import org.telegram.messenger.ImageReceiver;
 import org.telegram.messenger.MessagesController;
@@ -132,6 +133,12 @@ public class FavoriteFeedUi {
         }
         BulletinFactory.of(fragment).createSimpleBulletin(R.raw.star_fill,
             AndroidUtilities.replaceTags(formatPluralString(remove ? "FavoriteFeedRemovedChannels" : "FavoriteFeedAddedChannels", selected.size()))).show();
+    }
+
+    /** Every favorite channel read up to its newest post. */
+    public static void readAll(BaseFragment fragment) {
+        FavoriteFeedSource.getInstance(fragment.getCurrentAccount()).markReadUpTo(FavoriteFeedSource.READ_ALL);
+        BulletinFactory.of(fragment).createSimpleBulletin(R.raw.contact_check, getString(R.string.FavoriteFeedAllRead)).show();
     }
 
     /** The feed is a ChatActivity in search mode fed by FavoriteFeedSource, like public posts search. */

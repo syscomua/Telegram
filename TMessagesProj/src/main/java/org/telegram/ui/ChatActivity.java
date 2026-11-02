@@ -1668,6 +1668,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int favorite_feed = 75;
     private final static int favorite_feed_settings = 76;
     private final static int favorite_feed_calendar = 77;
+    private final static int favorite_feed_read_all = 78;
 
     private final static int bot_help = 30;
     private final static int bot_settings = 31;
@@ -3958,6 +3959,8 @@ public class ChatActivity extends BaseFragment implements
                     toggleMute(false);
                 } else if (id == favorite_feed_settings) {
                     presentFragment(new FavoriteFeedSettingsActivity());
+                } else if (id == favorite_feed_read_all) {
+                    FavoriteFeedUi.readAll(ChatActivity.this);
                 } else if (id == favorite_feed_calendar) {
                     showDialog(AlertsCreator.createCalendarPickerDialog(getParentActivity(), 1375315200000L, ChatActivity.this::jumpToDate, themeDelegate).create());
                 } else if (id == favorite_feed) {
@@ -4307,6 +4310,7 @@ public class ChatActivity extends BaseFragment implements
         ActionBarMenu menu = actionBar.createMenu();
 
         if (isFavoriteFeed()) {
+            menu.addItem(favorite_feed_read_all, R.drawable.msg_markread).setContentDescription(getString(R.string.FavoriteFeedReadAll));
             menu.addItem(favorite_feed_calendar, R.drawable.msg_calendar2).setContentDescription(getString(R.string.JumpToDate));
             menu.addItem(favorite_feed_settings, R.drawable.msg_settings_old).setContentDescription(getString(R.string.FavoriteFeedSettings));
         }
@@ -19746,7 +19750,6 @@ public class ChatActivity extends BaseFragment implements
     }
 
     private int feedJumpDate;
-    private final LongSparseArray<Integer> feedReadUpTo = new LongSparseArray<>();
     /** The feed opens at its first unread post, as a channel does; until then nothing is marked read. */
     private boolean feedPositioned;
     private boolean feedPositioning;
@@ -19802,14 +19805,15 @@ public class ChatActivity extends BaseFragment implements
     }
 
     /**
-     * The feed has no dialog of its own: each channel is marked read up to its newest post
-     * that has been on screen, with its real message id, as scrolling that channel would.
+     * The feed has no dialog of its own. Having scrolled it down to a post means having read
+     * every channel up to that time; down at the end means having read it all.
+     * The database is asked at most once in a while, not on every scrolled frame.
      */
     private void markFeedVisibleAsRead() {
         if (chatListView == null || !feedPositioned) {
             return;
         }
-        final LongSparseArray<MessageObject> newestShown = new LongSparseArray<>();
+        int newestShown = 0;
         final int listBottom = chatListView.getMeasuredHeight() - chatListView.getPaddingBottom();
         for (int a = 0; a < chatListView.getChildCount(); a++) {
             final View child = chatListView.getChildAt(a);
@@ -19817,39 +19821,35 @@ public class ChatActivity extends BaseFragment implements
                 continue;
             }
             final MessageObject message = ((ChatMessageCell) child).getMessageObject();
-            if (message == null || message.isOut() || message.getRealId() <= 0) {
-                continue;
-            }
-            final MessageObject current = newestShown.get(message.getDialogId());
-            if (current == null || message.getRealId() > current.getRealId()) {
-                newestShown.put(message.getDialogId(), message);
+            if (message != null && message.getRealId() > 0) {
+                newestShown = Math.max(newestShown, message.messageOwner.date);
             }
         }
-        for (int a = 0; a < newestShown.size(); a++) {
-            final long dialogId = newestShown.keyAt(a);
-            final MessageObject message = newestShown.valueAt(a);
-            final int readId = message.getRealId();
-            final TLRPC.Dialog dialog = getMessagesController().dialogs_dict.get(dialogId);
-            if (dialog == null) {
-                continue;
-            }
-            final int readInboxMax = FavoriteFeedSource.getReadInboxMax(getMessagesController(), dialog);
-            if (dialog.unread_count == 0 && !dialog.unread_mark || readId <= readInboxMax) {
-                continue;
-            }
-            final Integer done = feedReadUpTo.get(dialogId);
-            if (done != null && done >= readId) {
-                continue;
-            }
-            feedReadUpTo.put(dialogId, readId);
-            int counterDecrement = 0;
-            for (int b = 0; b < messages.size(); b++) {
-                final MessageObject m = messages.get(b);
-                if (m.getDialogId() == dialogId && !m.isOut() && m.getRealId() > readInboxMax && m.getRealId() <= readId) {
-                    counterDecrement++;
-                }
-            }
-            getMessagesController().markDialogAsRead(dialogId, readId, readId, message.messageOwner.date, false, 0, Math.max(1, counterDecrement), readId >= dialog.top_message, 0);
+        if (newestShown == 0) {
+            return;
+        }
+        if (!chatListView.canScrollVertically(1) && !messages.isEmpty() && messages.get(0).messageOwner.date <= newestShown) {
+            newestShown = FavoriteFeedSource.READ_ALL;
+        }
+        if (newestShown <= feedReadDate) {
+            return;
+        }
+        feedReadDate = newestShown;
+        if (!feedReadScheduled) {
+            feedReadScheduled = true;
+            AndroidUtilities.runOnUIThread(feedReadRunnable, 700);
+        }
+    }
+
+    private int feedReadDate;
+    private boolean feedReadScheduled;
+    private final Runnable feedReadRunnable = this::flushFeedRead;
+
+    private void flushFeedRead() {
+        AndroidUtilities.cancelRunOnUIThread(feedReadRunnable);
+        if (feedReadScheduled) {
+            feedReadScheduled = false;
+            FavoriteFeedSource.getInstance(currentAccount).markReadUpTo(feedReadDate);
         }
     }
 
@@ -30509,6 +30509,10 @@ public class ChatActivity extends BaseFragment implements
     @Override
     public void onPause() {
         super.onPause();
+        if (isFavoriteFeed()) {
+            // leaving the feed right after a scroll must not lose it
+            flushFeedRead();
+        }
         scrolling = false;
         if (scrimPopupWindow != null) {
             scrimPopupWindow.setPauseNotifications(false);

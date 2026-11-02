@@ -416,6 +416,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
             args.putBoolean("needFinishFragment", false);
             presentFragment(new ContactsActivity(args));
         });
+        o.add(R.drawable.msg_markread, getString(R.string.FavoriteFeedReadAll), () -> FavoriteFeedUi.readAll(this));
         o.add(R.drawable.msg_settings_old, getString(R.string.FavoriteFeedSettings), () -> presentFragment(new FavoriteFeedSettingsActivity()));
         o.add(R.drawable.msg_contact_add, getString(R.string.NewContact), () -> {
             new NewContactBottomSheet(this, getContext()).show();

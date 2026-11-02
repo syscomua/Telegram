@@ -278,6 +278,8 @@
     <string name="FavoriteFeedRemovedChannels_other">**%1$d** канала убрано из избранной ленты</string>
     <string name="FavoriteFeed">Избранная лента</string>
     <string name="FavoriteFeedTab">Лента</string>
+    <string name="FavoriteFeedReadAll">Прочитать всё</string>
+    <string name="FavoriteFeedAllRead">Лента прочитана</string>
     <string name="LocalGroupFamily">Семья</string>
     <string name="LocalGroupFriends">Друзья</string>
     <string name="LocalGroupWork">Работа</string>

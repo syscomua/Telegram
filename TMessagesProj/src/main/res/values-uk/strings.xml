@@ -291,6 +291,8 @@
     <string name="FavoriteFeedRemovedChannels_other">**%1$d** каналу прибрано з обраної стрічки</string>
     <string name="FavoriteFeed">Обрана стрічка</string>
     <string name="FavoriteFeedTab">Стрічка</string>
+    <string name="FavoriteFeedReadAll">Прочитати все</string>
+    <string name="FavoriteFeedAllRead">Стрічку прочитано</string>
     <string name="LocalGroupFamily">Сім\'я</string>
     <string name="LocalGroupFriends">Друзі</string>
     <string name="LocalGroupWork">Робота</string>
